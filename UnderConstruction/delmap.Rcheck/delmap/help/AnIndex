@@ -1,0 +1,8 @@
+delmap-package	delmap-package
+delmap	delmap-package
+print	print.delmap.data
+print.delmap.data	print.delmap.data
+ReadData	ReadData
+SimDeletions	SimDeletions
+simulate	SimDeletions
+simulate deletion data	SimDeletions

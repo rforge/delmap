@@ -1,0 +1,4 @@
+export(SimDeletions, ReadData)
+S3method(print, delmap.data)
+
+
