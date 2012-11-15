@@ -1,6 +1,0 @@
-      snp432A  snp4923   snp4888  snp942  snp011
-pl184   A        A         A        A      A
-pl001   B        A         A        B      A 
-pl2754  B        B         B        A      A
-pl222   A        A         B        B      A
-pl234   A        A         B        B      B
