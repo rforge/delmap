@@ -317,6 +317,138 @@ ReadData <- function(datafile, line.names=FALSE,na.strings="NA", marker.names=FA
 
 
 
+CreateDistMatrix <- function(mat=NULL)
+{
+## Purpose:  take a matrix containing 1's for deletions and 0's
+##           and convert into distance matrix by 
+##           1. transforming it into a similarity matrix
+##           2. converting it into a dis-similarity matrix
+##           3. saving as a distance object. 
+## Args:     matrix of 1's and 0's  - rows are line data and columns are marker data.
+## Return:   distance object for deletion data
+
+
+   ## convert into similarity matrix
+   S <- t(mat)%*% (mat)
+   S <- S - diag(diag(S))
+
+    ## convert into disSimilarity matrix
+    disS <- max(S) - S
+
+    ## convert into distance object
+    as.dist(disS)
+
+} ## end function CreateDistMatrix
+
+
+CleanData <- function(mat=NULL)
+{
+  ## Purpose:   CleanData 
+  ##            Rows and columns without deletions are removed
+  cl <- class(mat)
+  lindx <- which(rowSums(mat)==0)
+  mindx <- which(colSums(mat)==0)
+  if(length(lindx)>0) mat <- mat[-lindx,]
+  if(length(mindx)>0)  mat <- mat[, -mindx]
+  class(mat) <- cl
+   mat
+  }
+
+
+
+PermuteCols <- function(mat=NULL)
+{
+  ## permute columns
+  indx <- sample(1:ncol(mat), ncol(mat), replace=F)
+  mat[, indx]
+}
+
+
+
+IdentifyMarkerBlocks <- function(mat.deletion = NULL)
+{
+  ## Purpose:  to identify separate blocks of markers. 
+  ##           In doing this, I am assuming that the data is 
+  #            in the true ordering. Some patterns of deletion data
+  ##           can lead to independent blocks of markers being formed.
+  ##           These blocks can be in different orders. 
+  ## Args:     mat.deletion -  matrix of deletion data in true marker order
+  ## Returns:  integer vector of blocks
+
+
+  marker.groupings <- rep(FALSE, ncol(mat.deletion)-1)
+  ## Determining separate groupings of markers
+  for(ii in 2:ncol(mat.deletion))
+    if (mat.deletion[,ii-1] %*% mat.deletion[, ii] > 0)
+        marker.groupings[ii-1] <-  TRUE
+
+  indx <- 1
+  group.indx <- rep(NA, ncol(mat.deletion))
+  group.indx[1] <- indx
+  for(ii in 2:ncol(mat.deletion))
+  {
+    if(!marker.groupings[ii-1])
+        indx <- indx + 1
+    group.indx[ii] <- indx
+  }
+  return(group.indx)
+} ## end function
+
+IdentifyOrderings <- function(mat.deletions = NULL, sord=NULL)
+{
+
+  ## Purpose:  to identify all candidate marker orderings
+  ##           for each marker block of loci. 
+  ## Args:     mat.deletions  matrix of marker deletion data (0,1)
+  ##           ord  ordering from seriate function
+  ## Returns:  list where each element is a integer vector or possible orderings
+
+
+  ## identify any marker blocks
+  blocks <- IdentifyMarkerBlocks(mat.deletions)
+
+  list.orders <- list(blocks=blocks, orders=NULL)
+
+  for( jj in unique(blocks) )
+  {
+
+     indx <- which(blocks==jj)
+     dat <- mat.deletions[, indx]
+
+     ## determine: change in number of deletions across loci
+     num.deletions <- colSums( dat[get_order(sord[1]),]   )
+     change.in.number.of.deletions  <- rep(FALSE, ncol(dat)-1)
+     for(ii in 2:ncol(dat))
+        if( abs(num.deletions[ii] - num.deletions[ii-1]) > 0)
+            change.in.number.of.deletions[ii-1] <- TRUE
+
+     ## determine: change in lines with deletions
+     change.in.lines.with.deletions <- rep(FALSE, ncol(dat)-1)
+     for(ii in 2:ncol(dat))
+          if( any((dat[,ii-1] + dat[,ii])==1) )
+              change.in.lines.with.deletions[ii-1] <- TRUE
+
+     ## if 0, then false false and marker not uniquely positioned
+     col.sums <-  colSums(  matrix( data= c(change.in.number.of.deletions,
+                          change.in.lines.with.deletions), byrow=T, nrow=2) )
+
+     ## identify markers that cannot be uniquely positioned. 
+     indx <- 1
+     orderings <- rep(0, ncol(dat))
+     orderings[1] <- indx
+     for(ii in 2:ncol(dat))
+     {
+       if( col.sums[ii-1] != 0)
+            indx <- indx + 1
+       orderings[ii] <- indx
+     }
+     list.orders$orders[[jj]] <- orderings
+    } ## end jj
+    return(list.orders)
+
+} ## end function IdentifyOrderings
+
+
 
 
 

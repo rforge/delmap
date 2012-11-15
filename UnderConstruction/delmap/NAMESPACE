@@ -1,4 +1,4 @@
-export(SimDeletions, ReadData)
+export(SimDeletions, ReadData, CreateDistMatrix)
 S3method(print, delmap.data)
 
 
