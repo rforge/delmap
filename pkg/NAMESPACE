@@ -1,4 +1,13 @@
-export(SimDeletions, ReadData)
+export(
+       CleanData, 
+       IdentifyMarkerBlocks,
+       ImputeMissingGeno,
+       SimDeletions,
+       CreateDistMatrix,
+       IdentifyMarkerOrd,
+       PermuteCols,   
+       ReadData
+        )
 S3method(print, delmap.data)
-
+import(seriation, TSP)
 

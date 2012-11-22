@@ -12,7 +12,7 @@
 ##         plot of all orderings
 ## To Do
 ##   1. code to bin markers with cor=1 and no missing genotypes. 
-
+##   2. sort out missing genotypes and CleanData - ignore ?
 
 
   
@@ -44,10 +44,10 @@
     ## Purpose: to write out marker names
     cat("\n")
     cat(" Marker names (in column data order) are: \n")
-    if(length(rownames(x))  < 5)
+    if(length(rownames(x))  < 9)
         cat(" ", rownames(x),      "\n")
       else
-        cat(" ", rownames(x)[1:5], "... \n")
+        cat(" ", rownames(x)[1:9], "... \n")
 
   } ## end function write.mrknames
 
@@ -341,51 +341,63 @@ CreateDistMatrix <- function(mat=NULL)
 } ## end function CreateDistMatrix
 
 
-CleanData <- function(mat=NULL)
+CleanData <- function(dmat=NULL, ignoreNA=TRUE)
 {
   ## Purpose:   CleanData 
   ##            Rows and columns without deletions are removed
-  cl <- class(mat)
-  lindx <- which(rowSums(mat)==0)
-  mindx <- which(colSums(mat)==0)
-  if(length(lindx)>0) mat <- mat[-lindx,]
-  if(length(mindx)>0)  mat <- mat[, -mindx]
-  class(mat) <- cl
-   mat
-  }
+  ## ignoreNA if true, means NA's are treated as 0's.
+  ## ignoreNA if false, means NA's treated as 1's (deletions).
+  if(class(dmat) != "delmap.data") stop("Error! object not of class delmap.data")
+
+  cl <- class(dmat)
+  indx <- which(is.na(dmat), arr.ind=TRUE)
+  if(ignoreNA) dmat[indx] <- 0
+  if(!ignoreNA) dmat[indx] <- 1
+  lindx <- which(rowSums(dmat)==0)
+  mindx <- which(colSums(dmat)==0)
+  if(length(lindx)>0) dmat <- dmat[-lindx,]
+  if(length(mindx)>0)  dmat <- dmat[, -mindx]
+  class(dmat) <- cl
+   dmat
+}  ## CleanData
 
 
 
-PermuteCols <- function(mat=NULL)
+PermuteCols <- function(dmat=NULL)
 {
+ if(class(dmat) != "delmap.data") stop("Error! object not of class delmap.data")
+
+  cl <- class(dmat)
   ## permute columns
-  indx <- sample(1:ncol(mat), ncol(mat), replace=F)
-  mat[, indx]
+  indx <- sample(1:ncol(dmat), ncol(dmat), replace=F)
+  a <- dmat[, indx]
+  class(a) <- cl
+  a
 }
 
 
 
-IdentifyMarkerBlocks <- function(mat.deletion = NULL)
+IdentifyMarkerBlocks <- function(dmat = NULL)
 {
   ## Purpose:  to identify separate blocks of markers. 
   ##           In doing this, I am assuming that the data is 
   #            in the true ordering. Some patterns of deletion data
   ##           can lead to independent blocks of markers being formed.
   ##           These blocks can be in different orders. 
-  ## Args:     mat.deletion -  matrix of deletion data in true marker order
+  ## Args:     dmat -  matrix of deletion data in true marker order
   ## Returns:  integer vector of blocks
 
 
-  marker.groupings <- rep(FALSE, ncol(mat.deletion)-1)
+  marker.groupings <- rep(FALSE, ncol(dmat)-1)
   ## Determining separate groupings of markers
-  for(ii in 2:ncol(mat.deletion))
-    if (mat.deletion[,ii-1] %*% mat.deletion[, ii] > 0)
+  for(ii in 2:ncol(dmat))
+    if (dmat[,ii-1] %*% dmat[, ii] > 0)
         marker.groupings[ii-1] <-  TRUE
 
   indx <- 1
-  group.indx <- rep(NA, ncol(mat.deletion))
+  group.indx <- rep(NA, ncol(dmat))
   group.indx[1] <- indx
-  for(ii in 2:ncol(mat.deletion))
+  for(ii in 2:ncol(dmat))
   {
     if(!marker.groupings[ii-1])
         indx <- indx + 1
@@ -394,18 +406,23 @@ IdentifyMarkerBlocks <- function(mat.deletion = NULL)
   return(group.indx)
 } ## end function
 
-IdentifyOrderings <- function(mat.deletions = NULL, sord=NULL)
+IdentifyMarkerOrd <- function(dmat = NULL)
 {
 
   ## Purpose:  to identify all candidate marker orderings
   ##           for each marker block of loci. 
-  ## Args:     mat.deletions  matrix of marker deletion data (0,1)
+  ## Args:     dmat  matrix of marker deletion data (0,1)
   ##           ord  ordering from seriate function
   ## Returns:  list where each element is a integer vector or possible orderings
 
 
+  ## Order rows/lines based on deletion pattern
+  d <- dmat
+  class(d) <- "matrix" 
+  sord <- seriate(d, method="BEA")
+
   ## identify any marker blocks
-  blocks <- IdentifyMarkerBlocks(mat.deletions)
+  blocks <- IdentifyMarkerBlocks(dmat)
 
   list.orders <- list(blocks=blocks, orders=NULL)
 
@@ -413,8 +430,11 @@ IdentifyOrderings <- function(mat.deletions = NULL, sord=NULL)
   {
 
      indx <- which(blocks==jj)
-     dat <- mat.deletions[, indx]
-
+     if(length(indx)==1)
+     {
+      list.orders$orders[[jj]] <- 1
+     } else {
+     dat <- dmat[, indx]
      ## determine: change in number of deletions across loci
      num.deletions <- colSums( dat[get_order(sord[1]),]   )
      change.in.number.of.deletions  <- rep(FALSE, ncol(dat)-1)
@@ -443,12 +463,24 @@ IdentifyOrderings <- function(mat.deletions = NULL, sord=NULL)
        orderings[ii] <- indx
      }
      list.orders$orders[[jj]] <- orderings
+     } ## end if else
     } ## end jj
     return(list.orders)
 
 } ## end function IdentifyOrderings
 
 
+
+
+ImputeMissingGeno <- function(dmat=NULL)
+{
+  ## Assign 0,1 values to missing genotypes
+
+ ## identify elements that have missing genotypes (NA)
+ indx <- which(is.na(dmat), arr.ind=TRUE)
+ dmat[indx] <- sample(unique(dmat)[!is.na(unique(dmat))], nrow(indx), replace=T)
+ dmat
+}  ## end function ImputeMissingGeno
 
 
 

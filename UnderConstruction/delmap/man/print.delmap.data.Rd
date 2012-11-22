@@ -19,8 +19,8 @@ further arguments passed to or from other methods.
 }
 }
 \details{
-'print.delmap.data' is a customized print function for printing the contents of the 'delmap.data' object. The first 
- five lines of data, plant names, and marker names are displayed.  
+'print.delmap.data' is a customized print function for printing the contents of the 'delmap.data' object. The first
+ five lines of data, plant names, and marker names are displayed. 
 }
 \author{
 Andrew W. George
@@ -30,7 +30,7 @@ Andrew W. George
 }
 \examples{
 # generate deletion data
-S <-  SimDeletions( numlines = 500, plines = 0.2, nummarkers = 20,
+S <- SimDeletions( numlines = 500, plines = 0.2, nummarkers = 20,
     Enumdel = 8, p.missing = 0.02,  seed = NULL)
 
 # print contents of data where all genotypes are observed
