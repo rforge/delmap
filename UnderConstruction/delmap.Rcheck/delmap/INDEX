@@ -1,0 +1,11 @@
+CleanData               Clean Data in Readiness for Analysis
+CreateDistMatrix        Distance Measure Computation
+IdentifyMarkerBlocks    Identify Marker Blocks
+IdentifyMarkerOrd       Identify Marker Orderings
+ImputeMissingGeno       Impute Missing Marker Genotypes
+PermuteCols             Change Order of Marker Columns
+ReadData                Read Deletion Data
+SimDeletions            Simulation
+delmap-package          Deletion Mapping
+delmap.data             Data Class for Deletion Data
+print.delmap.data       Print Deletion Data
