@@ -30,8 +30,14 @@ Andrew W. George
 }
 \examples{
 # generate deletion data
-S <- SimDeletions( numlines = 500, plines = 0.2, nummarkers = 20,
-    Enumdel = 8, p.missing = 0.02,  seed = NULL)
+
+Slist <-  SimDeletions( numlines = 50, plines = 0.2, nummarkers = 20,
+    Enumdel = 4, p.missing = 0.02,  seed = 1)
+
+
+## Clean data i.e. remove rows/columns without any deletions
+Slist[["nomissing"]] <- CleanData(Slist[["nomissing"]])
+
 
 # plot contents of data as a deletion map
 plot(S[["nomissing"]])
