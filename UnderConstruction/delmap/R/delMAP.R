@@ -484,3 +484,57 @@ ImputeMissingGeno <- function(dmat=NULL)
 
 
 
+plot.delmap.data <- function(x, ...)
+{
+   b <- x
+   class(b) <- "matrix"
+
+   a <- seriate(b, method="BEA")
+
+   colours <- c("blue", "lightgreen", "grey", "red",  "yellow", "lightblue")
+   colours.markers <- c("red", "blue", "black")
+
+   orderings <- IdentifyOrderings(x, a)
+   for(jj in unique(orderings$blocks))
+   {
+     startcol <- colours[ 2* (jj %% 3) - 1]
+     endcol   <- colours[ 2* (jj %% 3)]
+
+
+     cindx <- which(orderings$blocks==jj)
+     ypos <- seq(1, nrow(x), 1)
+     xpos <- cindx
+
+     if(jj == 1)
+     {
+       image(x=xpos, y=ypos, z=t(x[get_order(a[1]),cindx] ), xlab="markers", ylab="lines",
+              xaxt="n",  yaxt="n", bty="n", ylim=c(0,max(ypos)+1), xlim=c(0,ncol(x)+1), col=two.colors(start=startcol, end=endcol))
+       axis(1, at=1:ncol(x), labels= rep("",ncol(x)), las=2 )
+       axis(2, at=1:nrow(x), labels=rep("", nrow(x)))
+     } else {
+       image(x=xpos, y=ypos, z=t(x[get_order(a[1]),cindx] ),
+              xaxt="n", add=T,   col=two.colors(start=startcol, end=endcol))
+     }
+   }  ## end for jj
+
+   for(ii in 0:nrow(x))
+   abline(h=ii+ 0.5, lty=2, col="white")
+
+   for(ii in 0:ncol(x))
+   abline(v=ii+0.5, lty=2, col="white")
+
+   par(xpd=NA, srt=90) ## to allow drawing in margins
+   indx <- 1
+   for(jj in unique(orderings$blocks))
+   {
+     for(ii in 1:length(orderings$orders[[jj]]))
+     {
+       text(y=-0.5, x=indx, colnames(x)[indx],
+             col=colours.markers[1 + orderings$orders[[jj]][ii] %% 3])
+       indx <- indx + 1
+     }
+   }
+
+} ## end function plot.delmap.data
+
+
