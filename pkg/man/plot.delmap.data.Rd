@@ -34,6 +34,6 @@ S <- SimDeletions( numlines = 500, plines = 0.2, nummarkers = 20,
     Enumdel = 8, p.missing = 0.02,  seed = NULL)
 
 # plot contents of data as a deletion map
-plot(S$nomissing)
+plot(S[["nomissing"]])
 }
 

@@ -467,7 +467,7 @@ IdentifyMarkerOrd <- function(dmat = NULL)
     } ## end jj
     return(list.orders)
 
-} ## end function IdentifyOrderings
+} ## end function IdentifyMarkerOrd
 
 
 
@@ -486,15 +486,15 @@ ImputeMissingGeno <- function(dmat=NULL)
 
 plot.delmap.data <- function(x, ...)
 {
-   b <- x
-   class(b) <- "matrix"
+  d <- x
+  class(d) <- "matrix" 
+  a <- seriate(d, method="BEA")
 
-   a <- seriate(b, method="BEA")
 
    colours <- c("blue", "lightgreen", "grey", "red",  "yellow", "lightblue")
    colours.markers <- c("red", "blue", "black")
 
-   orderings <- IdentifyOrderings(x, a)
+   orderings <- IdentifyMarkerOrd(x)
    for(jj in unique(orderings$blocks))
    {
      startcol <- colours[ 2* (jj %% 3) - 1]

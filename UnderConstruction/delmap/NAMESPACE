@@ -10,5 +10,5 @@ export(
         )
 S3method(print, delmap.data)
 S3method(plot, delmap.data)
+importFrom(fields, two.colors)
 import(seriation, TSP)
-

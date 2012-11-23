@@ -34,10 +34,10 @@ S <- SimDeletions( numlines = 500, plines = 0.2, nummarkers = 20,
     Enumdel = 8, p.missing = 0.02,  seed = NULL)
 
 # print contents of data where all genotypes are observed
-print(S$nomissing)
+print(S[["nomissing"]])
 
 #print contents of data where there are missing genotypes
-print(S$missing)
+print(S[["missing"]])
 
 }
 
