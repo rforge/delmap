@@ -3,7 +3,7 @@ Type: Package
 Title: DELETION MAPPING
 Version: 1.0
 Date: 2012-11-12
-Author: Andrew W. George
+Author: Andrew W. George and James Totterdell
 Maintainer: Andrew George <andrew.george@csiro.au>
 Description:  Deletion mapping is a statistical technique for ordering genetic markers. Unlike linkage mapping that is reliant upon recombinations to order loci, deletion mapping depends upon genomic deletions. This package visualizes and analyzes deletion data on inbreds. The data can be read in from file or simulated.  
 License: GPL (>= 2.0)

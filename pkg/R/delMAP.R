@@ -484,56 +484,82 @@ ImputeMissingGeno <- function(dmat=NULL)
 
 
 
-plot.delmap.data <- function(x, ...)
+plot.delmap.data <- function(x, main=NULL,...)
 {
-  d <- x
-  class(d) <- "matrix" 
-  a <- seriate(d, method="BEA")
 
+    class(x) <- "matrix"    
 
-   colours <- c("blue", "lightgreen", "grey", "red",  "yellow", "lightblue")
-   colours.markers <- c("red", "blue", "black")
+    dimc <- ncol(x)
+    dimr <- nrow(x)
 
-   orderings <- IdentifyMarkerOrd(x)
-   for(jj in unique(orderings$blocks))
-   {
-     startcol <- colours[ 2* (jj %% 3) - 1]
-     endcol   <- colours[ 2* (jj %% 3)]
+    plot(x, xlim=c(1,dimc), ylim=rev(c(1,dimr)), xlab="", ylab="", type="n", axes=FALSE, frame=TRUE)
+    if(!is.null(main)) title(main=main, line=3)
+    axis(3, 1:dimc, dimnames(x)[[2]], cex.axis = 0.7, las=3)
+    axis(2, 1:dimr, dimnames(x)[[1]], cex.axis = 0.7, las=1)
 
+    # set grid lines
+    abline(v=0.5:(dimc+0.5), col="grey")
+    abline(h=0.5:(dimr+0.5), col="grey")
 
-     cindx <- which(orderings$blocks==jj)
-     ypos <- seq(1, nrow(x), 1)
-     xpos <- cindx
+    # add data
+    indx <- which(is.na(x), arr.ind=TRUE)
+    points(indx[,2], indx[,1])
+    indx <- which(x==1, arr.ind=TRUE)
+    points(indx[,2], indx[,1], pch=19)
 
-     if(jj == 1)
-     {
-       image(x=xpos, y=ypos, z=t(x[get_order(a[1]),cindx] ), xlab="markers", ylab="lines",
-              xaxt="n",  yaxt="n", bty="n", ylim=c(0,max(ypos)+1), xlim=c(0,ncol(x)+1), col=two.colors(start=startcol, end=endcol))
-       axis(1, at=1:ncol(x), labels= rep("",ncol(x)), las=2 )
-       axis(2, at=1:nrow(x), labels=rep("", nrow(x)))
-     } else {
-       image(x=xpos, y=ypos, z=t(x[get_order(a[1]),cindx] ),
-              xaxt="n", add=T,   col=two.colors(start=startcol, end=endcol))
-     }
-   }  ## end for jj
+    # determine and plot blocks
+    t <- c(0, findInterval(unique(IdentifyMarkerBlocks(x)),IdentifyMarkerBlocks(x)))
+    abline(v=t+0.5)
+    axis(1, (t[-length(t)]+t[-1])/2, sprintf("B%d", unique(IdentifyMarkerBlocks(x))), las=3, tick=FALSE)
 
-   for(ii in 0:nrow(x))
-   abline(h=ii+ 0.5, lty=2, col="white")
-
-   for(ii in 0:ncol(x))
-   abline(v=ii+0.5, lty=2, col="white")
-
-   par(xpd=NA, srt=90) ## to allow drawing in margins
-   indx <- 1
-   for(jj in unique(orderings$blocks))
-   {
-     for(ii in 1:length(orderings$orders[[jj]]))
-     {
-       text(y=-0.5, x=indx, colnames(x)[indx],
-             col=colours.markers[1 + orderings$orders[[jj]][ii] %% 3])
-       indx <- indx + 1
-     }
-   }
+#  d <- x
+#  class(d) <- "matrix" 
+#  a <- seriate(d, method="BEA")
+#
+#
+#   colours <- c("blue", "lightgreen", "grey", "red",  "yellow", "lightblue")
+#   colours.markers <- c("red", "blue", "black")
+#
+#   orderings <- IdentifyMarkerOrd(x)
+#   for(jj in unique(orderings$blocks))
+#   {
+#     startcol <- colours[ 2* (jj %% 3) - 1]
+#     endcol   <- colours[ 2* (jj %% 3)]
+#
+#
+#     cindx <- which(orderings$blocks==jj)
+#     ypos <- seq(1, nrow(x), 1)
+#     xpos <- cindx
+#
+#     if(jj == 1)
+#     {
+#       image(x=xpos, y=ypos, z=t(x[get_order(a[1]),cindx] ), xlab="markers", ylab="lines",
+#              xaxt="n",  yaxt="n", bty="n", ylim=c(0,max(ypos)+1), xlim=c(0,ncol(x)+1), col=two.colors(start=startcol, end=endcol))
+#       axis(1, at=1:ncol(x), labels= rep("",ncol(x)), las=2 )
+#       axis(2, at=1:nrow(x), labels=rep("", nrow(x)))
+#     } else {
+#       image(x=xpos, y=ypos, z=t(x[get_order(a[1]),cindx] ),
+#              xaxt="n", add=T,   col=two.colors(start=startcol, end=endcol))
+#     }
+#   }  ## end for jj
+#
+#   for(ii in 0:nrow(x))
+#   abline(h=ii+ 0.5, lty=2, col="white")
+#
+#   for(ii in 0:ncol(x))
+#   abline(v=ii+0.5, lty=2, col="white")
+#
+#   par(xpd=NA, srt=90) ## to allow drawing in margins
+#   indx <- 1
+#   for(jj in unique(orderings$blocks))
+#   {
+#     for(ii in 1:length(orderings$orders[[jj]]))
+#     {
+#       text(y=-0.5, x=indx, colnames(x)[indx],
+#             col=colours.markers[1 + orderings$orders[[jj]][ii] %% 3])
+#       indx <- indx + 1
+#     }
+#   }
 
 } ## end function plot.delmap.data
 

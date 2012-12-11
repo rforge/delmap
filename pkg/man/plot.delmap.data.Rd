@@ -5,14 +5,17 @@
 Plot of Deletion Map
 }
 \description{
-Produces a coloured plot of the deletion map 
+Produces a plot of the deletion map 
 }
 \usage{
-\method{plot}{delmap.data}(x, \ldots)
+\method{plot}{delmap.data}(x, main, \ldots)
 }
 \arguments{
   \item{x}{
 an object of class 'delmap.dat' that has either been read in from file or simulated. 
+}
+  \item{main}{
+title of plot.
 }
   \item{\dots}{
 further arguments passed to or from other methods.
@@ -20,10 +23,10 @@ further arguments passed to or from other methods.
 }
 \details{
 \code{plot.delmap.data} is a function for visualizing the deletion data as a deletion map. Data for the marker 
-loci are plotted in column order. A different colour scheme is used for each separate marker block. 
+loci are plotted in column order. A solid vertical line separates the marker blocks. 
 }
 \author{
-Andrew W. George
+James Totterdell
 }
 \seealso{
 \code{\link{IdentifyMarkerBlocks}}
@@ -40,6 +43,6 @@ Slist[["nomissing"]] <- CleanData(Slist[["nomissing"]])
 
 
 # plot contents of data as a deletion map
-plot(S[["nomissing"]])
+plot(Slist[["nomissing"]])
 }
 
