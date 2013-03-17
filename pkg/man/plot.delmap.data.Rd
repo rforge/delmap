@@ -23,7 +23,8 @@ further arguments passed to or from other methods.
 }
 \details{
 \code{plot.delmap.data} is a function for visualizing the deletion data as a deletion map. Data for the marker 
-loci are plotted in column order. A solid vertical line separates the marker blocks. 
+loci are plotted in column order. A solid dot denotes a deletion, a hollow dot denotes a missing value, and an empty cell 
+denotes observed dna. A solid vertical line separates the marker blocks. 
 }
 \author{
 James Totterdell
