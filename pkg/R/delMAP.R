@@ -563,4 +563,53 @@ plot.delmap.data <- function(x, main=NULL,...)
 
 } ## end function plot.delmap.data
 
+as.delmap.data.matrix <- function(x)
+{
+  # convert matrix object into delmap.data object.
+  # matrix is given generic marker and line names. 
+  
+  # checks
+  if(ncol(x) < 2) stop("Matrix must contain more than a single column.")
+  if(nrow(x) < 2) stop("Matrix must contain more than a single row.")
+  if(length(unique(as.vector(x))[!is.na(unique(as.vector(x)))]) > 2) stop("Matrix contains more than two unique values.")
+
+  # convert matrix scores into 0/1 where we assume deletions are least prevalent. 
+  mode(x) <- "factor"  
+  mode(x) <- "numeric" ## trick to give me numbers
+  t <- table(x)
+  if(t[1] > t[2] )
+  {
+     x[which(x== as.numeric(names(t[1])), arr.ind=TRUE)] <- 0
+     x[which(x== as.numeric(names(t[2])), arr.ind=TRUE)] <- 1
+  } else {
+     x[which(x== as.numeric(names(t[2])), arr.ind=TRUE)] <- 0
+     x[which(x== as.numeric(names(t[1])), arr.ind=TRUE)] <- 1
+ } 
+ 
+  ## create generic marker names
+  colnames(x) <- paste("M", 1:ncol(x), sep="")
+
+  ## abbreviate line names
+  rownames(x)  <- paste("L", 1:nrow(x), sep="")
+
+  # new class of object where object contains matrix data with special attributes
+  class(x) <- "delmap.data"
+  
+  x
+}
+
+is.delmap.data <- function(dmat) inherits(dmat, "delmap.data")
+
+as.delmap.data <- function(x)
+{
+  if(is.delmap.data(x))
+     x
+  else
+    {
+      stop(" Only objects of type matrix can be converted into delmap.data objects.")
+      NULL
+    } 
+
+}
+
 
