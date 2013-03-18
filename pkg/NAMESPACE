@@ -1,5 +1,6 @@
 export(
        CleanData, 
+       Collapse,
        IdentifyMarkerBlocks,
        ImputeMissingGeno,
        SimDeletions,

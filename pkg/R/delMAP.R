@@ -38,6 +38,50 @@
 
    } ## end function write.it
 
+
+
+UniqueCols <- function(mat) {
+   ## Internal function
+   ## Purpose: to identify unique columns
+   ##          Returns only unique columns and a list of those marker loci removed. 
+   ## mat:     a data matrix or delmap.data object
+
+
+
+    # ucols will store the unique columns
+    cols <- list()
+    ncols <- dim(mat)[2]
+    ucols <- 1:ncols
+
+    # Iterate through columns comparing it with all columns
+    # except ones previously checked.
+    for(i in 1:(ncols-1)) {
+
+        # Use to keep track of collapsed markers
+        cols[[colnames(mat)[i]]] <- 0
+        k <- 1
+
+        # Iterate through each marker, if not unique, assign NA
+        # to be removed at return stage.
+        for(j in (i+1):ncols) {
+            if(!is.na(ucols[j])) { 
+                if(all(mat[,i]==mat[,j])) {
+                    ucols[j] <- NA
+                    cols[[colnames(mat)[i]]][k] <- colnames(mat)[j]
+                    k <- k+1
+                }
+            }
+        }
+
+        if(length(cols[[colnames(mat)[i]]]) == 1) cols[[colnames(mat)[i]]] <- NULL
+    }
+    return(list(mat = mat[,ucols[!is.na(ucols)]], cols = cols))
+}
+
+
+
+
+
   write.mrknames <- function(x)
   {
     ## Internal function
@@ -612,4 +656,43 @@ as.delmap.data <- function(x)
 
 }
 
+#===================================================
+# Function to collapse like markers into one
+# marker column. If a column contains missing values
+# i.e. NA then it is not collapsed because don't know
+# if NA is 0 or 1.
+# Returns a list with the collapsed data and info on which
+# columns were collapsed
+# dmat: a delmap data object
+#===================================================
+Collapse <- function(dmat=NULL) {
+
+   class(dmat) <- "matrix"
+
+   # The current ordering of dmat
+   orig.ord <- 1:ncol(dmat)
+   names(orig.ord) <- colnames(dmat)
+
+   indx <- which(is.na(dmat), arr.ind=TRUE)
+
+   # Assume no missing data
+   miss <- NULL
+   nomiss <- dmat
+
+   # If a marker has missing data, assign to miss,
+   # otherwise assign to no miss.
+   if(length(indx)!=0) {
+       miss <- dmat[,unique(indx[,2])] 
+       nomiss <- dmat[,-unique(indx[,2])]
+   }
+
+   uniq <- UniqueCols(nomiss)
+
+   # Combine the unique columns with the
+   # miss matrix
+   ret <- cbind(uniq$mat, miss)
+   ret <- ret[,names(sort(orig.ord[colnames(ret)]))]
+   class(ret) <- "delmap.data"
+   return(list(data = ret, collapsed = uniq$cols))
+}
 

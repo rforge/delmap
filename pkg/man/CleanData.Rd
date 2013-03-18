@@ -20,7 +20,7 @@ if set to TRUE, missing genotypes will be ignored. If set to FALSE, rows/columns
 }
 }
 \details{
-Rows and columns of genotype data that record no deletions can be removed from the analysis. This has the advantage of 
+Rows and columns of genotype data that have  no deletions can be removed from the analysis. This has the advantage of 
 reducing the dimension of the problem. 
 }
 \value{
@@ -35,7 +35,7 @@ any deletions. However, it may be more approriate to set \code{ignoreNA=FALSE}. 
 have missing genotypes will be retained. Imputation can then be used later to impute the missing genotypes. 
 }
 \seealso{
-\code{\link{ReadData}}, \code{\link{ImputeMissingGeno}}
+\code{\link{ReadData}}, \code{\link{ImputeMissingGeno}}, \code{\link{Collapse}}
 }
 \examples{
 # generate deletion data
