@@ -361,26 +361,24 @@ ReadData <- function(datafile, line.names=FALSE,na.strings="NA", marker.names=FA
 
 
 
-CreateDistMatrix <- function(mat=NULL)
+CreateDistMatrix <- function(dmat=NULL)
 {
-## Purpose:  take a matrix containing 1's for deletions and 0's
-##           and convert into distance matrix by 
-##           1. transforming it into a similarity matrix
-##           2. converting it into a dis-similarity matrix
-##           3. saving as a distance object. 
-## Args:     matrix of 1's and 0's  - rows are line data and columns are marker data.
+## Purpose:  Use Manhattan distance measure on marker loci (columns)
+## Args:     matrix or delmap.data object
 ## Return:   distance object for deletion data
 
+   if(is.delmap(dmat)){
+     class(dmat) <- "matrix"
+   } else {
+    if(is.matrix(dmat))
+    {
+      dmat <- as.delmap(dmat)
+    } else stop(" Object must be of type matrix or delmap.data.")
+   }
+   if(any(is.na(dmat))) stop("NA values not allowed when calculating distances.")
 
-   ## convert into similarity matrix
-   S <- t(mat)%*% (mat)
-   S <- S - diag(diag(S))
 
-    ## convert into disSimilarity matrix
-    disS <- max(S) - S
-
-    ## convert into distance object
-    as.dist(disS)
+    return(dist(t(dmat), method="manhattan"))
 
 } ## end function CreateDistMatrix
 
@@ -389,20 +387,31 @@ CleanData <- function(dmat=NULL, ignoreNA=TRUE)
 {
   ## Purpose:   CleanData 
   ##            Rows and columns without deletions are removed
-  ## ignoreNA if true, means NA's are treated as 0's.
-  ## ignoreNA if false, means NA's treated as 1's (deletions).
-  if(class(dmat) != "delmap.data") stop("Error! object not of class delmap.data")
+  #             Default is to remove rows with only a single NA. 
+  #             but this option is turned off by setting ignoreNA=FALSE
 
-  cl <- class(dmat)
-  indx <- which(is.na(dmat), arr.ind=TRUE)
-  if(ignoreNA) dmat[indx] <- 0
-  if(!ignoreNA) dmat[indx] <- 1
-  lindx <- which(rowSums(dmat)==0)
-  mindx <- which(colSums(dmat)==0)
-  if(length(lindx)>0) dmat <- dmat[-lindx,]
-  if(length(mindx)>0)  dmat <- dmat[, -mindx]
-  class(dmat) <- cl
-   dmat
+    if (!is.delmap(dmat)) 
+        stop("Error! object not of class delmap.data")
+    indx <- which(is.na(dmat), arr.ind = TRUE)
+
+
+    if(ignoreNA)
+    { ## ignoring NA's 
+     indx <- which(rowSums(dmat, na.rm=TRUE) == 0) 
+     if(length(indx) > 0) dmat <- dmat[-indx,]
+     indx <- which(colSums(dmat, na.rm=TRUE)==0)
+     if(length(indx) > 0) dmat <- dmat[, -indx]
+    }  else {
+      ## taking NA's into account in the count
+     indx <- which(rowSums(dmat, na.rm=TRUE) == 0 & rowSums(is.na(dmat)) <2)
+     if(length(indx) > 0) dmat <- dmat[-indx,]
+     indx <- which(colSums(dmat, na.rm=TRUE) == 0 & colSums(is.na(dmat)) <2)
+     if(length(indx) > 0) dmat <- dmat[,-indx]
+    }     
+
+    class(dmat) <- "delmap.data"
+    dmat 
+
 }  ## CleanData
 
 
@@ -607,7 +616,7 @@ plot.delmap.data <- function(x, main=NULL,...)
 
 } ## end function plot.delmap.data
 
-as.delmap.data.matrix <- function(x)
+as.delmap.matrix <- function(x)
 {
   # convert matrix object into delmap.data object.
   # matrix is given generic marker and line names. 
@@ -642,11 +651,15 @@ as.delmap.data.matrix <- function(x)
   x
 }
 
-is.delmap.data <- function(dmat) inherits(dmat, "delmap.data")
+is.delmap <- function(dmat) inherits(dmat, "delmap.data")
 
-as.delmap.data <- function(x)
+as.delmap <- function(x) 
+  UseMethod("as.delmap")
+
+
+as.delmap.default <- function(x)
 {
-  if(is.delmap.data(x))
+  if(is.delmap(x))
      x
   else
     {

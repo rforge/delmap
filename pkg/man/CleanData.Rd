@@ -5,7 +5,7 @@
 Clean Data in Readiness for Analysis
 }
 \description{
-\code{CleanData} removes those rows and columns in the deletion data that do not carry any deletions. 
+\code{CleanData} removes those rows and columns in the deletion data that do not carry any deletions.
 }
 \usage{
 CleanData(dmat= NULL, ignoreNA=TRUE)
@@ -16,23 +16,24 @@ CleanData(dmat= NULL, ignoreNA=TRUE)
 An object of class \code{\link{delmap.data}}
 }
   \item{ignoreNA}{
-if set to TRUE, missing genotypes will be ignored. If set to FALSE, rows/columns with missing genotypes will be retained.
+if set to TRUE, NA's are ignored when determining if a row/column should be removed. If set to FALSE, 
+rows/columns that carry more than one NA will be retained. 
 }
 }
 \details{
-Rows and columns of genotype data that have  no deletions can be removed from the analysis. This has the advantage of 
-reducing the dimension of the problem. 
+Rows and columns of genotype data that have  no deletions are removed.  By default, NA's are ignored. If 
+\code{ignoreNA} is set to FALSE, then rows/columns with NA's will 
+not be removed. 
+
+However, if a row or column has only a single NA, then it is still removed, even if 
+\code{ignoreNA} is set to FALSE. 
+
 }
 \value{
 An object of class \code{\link{delmap.data}}.
 }
 \author{
 Andrew W George
-}
-\note{
-By default, missing genoyptes are ignored, which will lead to rows/columns being deleted if they do not carry 
-any deletions. However, it may be more approriate to set \code{ignoreNA=FALSE}. This will ensure rows/columns that 
-have missing genotypes will be retained. Imputation can then be used later to impute the missing genotypes. 
 }
 \seealso{
 \code{\link{ReadData}}, \code{\link{ImputeMissingGeno}}, \code{\link{Collapse}}
@@ -46,10 +47,14 @@ Slist <-  SimDeletions( numlines = 50, plines = 0.2, nummarkers = 20,
 nrow(Slist[["missing"]])
 
 # Clean data but where missing genotypes are ignored.
-CleanData(Slist[["missing"]])
-nrow(CleanData(Slist[["missing"]]))
+a <- CleanData(Slist[["missing"]])
+a[,]  # print data matrix
+nrow(a)
 
 # Clean data but where colums/rows with missing genotypes are retained
 # for later use. 
-nrow(CleanData(Slist[["missing"]],ignoreNA=FALSE))
+b <- CleanData(Slist[["missing"]],ignoreNA=FALSE)
+b[,] #print data matrix
+nrow(b)
+
 }
