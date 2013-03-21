@@ -2,6 +2,7 @@ export (
        as.delmap, 
        CleanData, 
        Collapse,
+       DeletionMapping,
        IdentifyMarkerBlocks,
        ImputeMissingGeno,
        is.delmap,

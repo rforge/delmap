@@ -2,13 +2,14 @@
 \alias{CleanData}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-Clean Data in Readiness for Analysis
+Clean Data 
 }
 \description{
-\code{CleanData} removes those rows and columns in the deletion data that do not carry any deletions.
+\code{CleanData} removes those rows and columns that do not carry any deletions. See \code{details} for 
+impact of NAs.
 }
 \usage{
-CleanData(dmat= NULL, ignoreNA=TRUE)
+CleanData(dmat= NULL, ignoreNA=FALSE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -16,18 +17,18 @@ CleanData(dmat= NULL, ignoreNA=TRUE)
 An object of class \code{\link{delmap.data}}
 }
   \item{ignoreNA}{
-if set to TRUE, NA's are ignored when determining if a row/column should be removed. If set to FALSE, 
-rows/columns that carry more than one NA will be retained. 
+A logical variable. When TRUE, NA's are ignored and a row/column is only retained if it carrys at least 
+one deletion. When FALSE, a column will be removed only if it has no deletions or NAs. A row will be 
+removed if it has no deletions. Rows are removed first, followed by columns.  
 }
 }
 \details{
-Rows and columns of genotype data that have  no deletions are removed.  By default, NA's are ignored. If 
-\code{ignoreNA} is set to FALSE, then rows/columns with NA's will 
-not be removed. 
+When \code{ignoreNA} is TRUE, row and columns that do not carry any deletions are removed. 
 
-However, if a row or column has only a single NA, then it is still removed, even if 
-\code{ignoreNA} is set to FALSE. 
-
+When \code{ignoreNA} is FALSE, first rows that do not carry any deletions are removed. Then, of the remaining
+deletion data, those columns that carry no deletions and have no NAs are also removed.  
+Here, the assumption is that if a plant(row) has no recorded 
+deletions, then it is unlikely that the NA's are deletions.  
 }
 \value{
 An object of class \code{\link{delmap.data}}.
@@ -40,21 +41,16 @@ Andrew W George
 }
 \examples{
 # generate deletion data
-Slist <-  SimDeletions( numlines = 50, plines = 0.2, nummarkers = 20,
-    Enumdel = 4, p.missing = 0.02,  seed = 1)
+Slist <-  SimDeletions( numlines = 50, plines = 0.2, nummarkers = 30,
+    Enumdel = 4, p.missing = 0.05,  seed = 1)
 
-# Number of marker loci before beign cleaned
+# Number of marker loci before being cleaned
 nrow(Slist[["missing"]])
 
-# Clean data but where missing genotypes are ignored.
-a <- CleanData(Slist[["missing"]])
-a[,]  # print data matrix
-nrow(a)
 
-# Clean data but where colums/rows with missing genotypes are retained
-# for later use. 
-b <- CleanData(Slist[["missing"]],ignoreNA=FALSE)
-b[,] #print data matrix
-nrow(b)
+# Clean data but where NAs affect which rows/columns are removed
+a <- CleanData(Slist[["missing"]])
+a[,] #print data matrix
+nrow(a)
 
 }

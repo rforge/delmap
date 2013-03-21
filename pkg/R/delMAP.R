@@ -19,6 +19,69 @@
 ####--------------------------------##
 ##   INTERNAL FUNCTION DECLARATION  ##
 ####--------------------------------##
+
+#===================================================
+# This function moves the configuration to a neighbour
+# in the configuration space
+# x: the data vector
+# u: the elements of x that are to be swapped
+#===================================================
+Perturb <- function(x, u) {
+
+    # Turn 0's to 1's and 1's to 0's
+    for(i in 1:length(u)) {
+        if(x[u[i]] == 0 ) 
+            x[u[i]] <- 1
+        else
+            x[u[i]] <- 0
+    }
+    return(x)
+}
+
+
+
+#===================================================
+# Sort randomised columns when there are no missing
+# data values, could be combined into the Order function
+# but have kept it seperate for now
+# dmat :  delmap data
+# option: 1 for Manhattan dist, otherwise delmap dist
+# n: number of iterations (due to it being heuristic)
+#===================================================
+Sort <- function(dmat = NULL, n = 1000)
+{
+
+
+    cbest <- CleanData(dmat)
+    dbest <- CreateDistMatrix(cbest[,])
+    lbest <- criterion(dbest, method="Path_length")[1]
+    obest <- seriate(dbest, method="TSP", control=list(method="2-opt"))
+    ordbest <- cbest[,get_order(obest)]
+
+    # used to keep track of how lengths are changing
+    lengths <- rep(NA, n)
+
+    # Ordering obtained by Seriate TSP is not necessarily the same each time
+    # Iterate through to make sure we get the best, 1000 probably more than
+    # needed
+    for(i in 1:n) {
+        d <- CreateDistMatrix(ordbest[,])
+        o <- seriate(d, method="TSP", control=list(method="2-opt"))
+        ord <- ordbest[,get_order(o)]
+        l <- criterion(CreateDistMatrix(ord[,]), method="Path_length")[1]
+
+        if(l < lbest)
+        {
+            lbest <- l
+            ordbest <- ord
+        }
+        lengths[i] <- l
+    }
+    return(list(ord=as.delmap(ordbest), len=lengths))
+}
+
+
+
   write.it <- function(x)
   {
     ## Internal function
@@ -88,10 +151,10 @@ UniqueCols <- function(mat) {
     ## Purpose: to write out marker names
     cat("\n")
     cat(" Marker names (in column data order) are: \n")
-    if(length(rownames(x))  < 9)
-        cat(" ", rownames(x),      "\n")
+    if(length(colnames(x))  < 9)
+        cat(" ", colnames(x),      "\n")
       else
-        cat(" ", rownames(x)[1:9], "... \n")
+        cat(" ", colnames(x)[1:9], "... \n")
 
   } ## end function write.mrknames
 
@@ -103,10 +166,10 @@ UniqueCols <- function(mat) {
 
     cat("\n")
     cat(" Line names (in row data order) are: \n")
-    if(length(colnames(x)) < 5)
-       cat(" ", colnames(x),  "\n\n")
+    if(length(rownames(x)) < 5)
+       cat(" ", rownames(x),  "\n\n")
      else
-       cat(" ", colnames(x)[1:5], "... \n\n")
+       cat(" ", rownames(x)[1:5], "... \n\n")
 
      cat(" The proportion of genotypes missing is", round(sum(is.na(x))/(nrow(x)*ncol(x)),2), "\n")
   }  ## end function write.linenames
@@ -383,13 +446,14 @@ CreateDistMatrix <- function(dmat=NULL)
 } ## end function CreateDistMatrix
 
 
-CleanData <- function(dmat=NULL, ignoreNA=TRUE)
+CleanData <- function(dmat=NULL, ignoreNA=FALSE)
 {
   ## Purpose:   CleanData 
-  ##            Rows and columns without deletions are removed
-  #             Default is to remove rows with only a single NA. 
-  #             but this option is turned off by setting ignoreNA=FALSE
-
+  ##            Removing of noninformative rows/columns.
+  ##            If ignoreNA=TRUE, rows and columns are removed without regard to NA's if they carry no deletions
+  ##            IF ignoreNA=FALSE, only rows without deletions and/or columns with no NA's and 
+  ##            deletions are removed. That is, a column is only removed if it carrys no deletions and has 
+  ##            no NA's 
     if (!is.delmap(dmat)) 
         stop("Error! object not of class delmap.data")
     indx <- which(is.na(dmat), arr.ind = TRUE)
@@ -403,9 +467,9 @@ CleanData <- function(dmat=NULL, ignoreNA=TRUE)
      if(length(indx) > 0) dmat <- dmat[, -indx]
     }  else {
       ## taking NA's into account in the count
-     indx <- which(rowSums(dmat, na.rm=TRUE) == 0 & rowSums(is.na(dmat)) <2)
+     indx <- which(rowSums(dmat, na.rm=TRUE) == 0 )
      if(length(indx) > 0) dmat <- dmat[-indx,]
-     indx <- which(colSums(dmat, na.rm=TRUE) == 0 & colSums(is.na(dmat)) <2)
+     indx <- which(colSums(dmat, na.rm=TRUE) == 0 & colSums(is.na(dmat)) ==0)
      if(length(indx) > 0) dmat <- dmat[,-indx]
     }     
 
@@ -413,6 +477,9 @@ CleanData <- function(dmat=NULL, ignoreNA=TRUE)
     dmat 
 
 }  ## CleanData
+
+
+
 
 
 
@@ -680,4 +747,214 @@ Collapse <- function(dmat=NULL) {
    class(ret) <- "delmap.data"
    return(list(data = ret, collapsed = uniq$cols))
 }
+
+
+
+#===================================================
+# Function to find an approximately optimal ordering
+# according to Hamiltonion path length.
+#
+# dmat:   the delmap data
+# n:      the no. of iterations to perform
+# option: 1 for Manhattan distance, otherwise, delmap
+# w:      the "window" to work with i.e how many values
+#         change during each iteration
+# T:      value of temperature
+#===================================================
+Order <- function(dmat=NULL, n=1000,  w=1, T=1000) {
+    if (class(dmat) != "delmap.data")
+        stop("Error! object not of class delmap.data")
+
+    # Record original ordering in case we want it
+    orig.ord <- 1:ncol(dmat)
+    names(orig.ord) <- colnames(dmat)
+
+    # identify missing values
+    indx <- which(is.na(dmat[,]), arr.ind=TRUE)
+
+    # If no missing values just use sort
+    if(length(indx) < 1) {
+        print("No missing values! Used Sort() instead.") 
+        res <- Sort(dmat)
+        return(res)
+    }
+    
+    # used to store locations of missing values          
+    ind.na <- list(row=rownames(dmat)[indx[,1]], col=colnames(dmat)[indx[,2]], value=dmat[indx])
+
+    # Set initial configuration and store
+    S <- ImputeMissingGeno(dmat)
+    Sc <- CleanData(S)
+    Sd <- CreateDistMatrix(Sc)
+    Sl <- criterion(Sd, method="Path_length")[1]
+    So <- seriate(Sd, method="TSP", control=list(method="2-opt"))
+    Sord <- Sc[,get_order(So)]
+
+    # Stores the imputed values of missing data
+    bestvals <- sapply(FUN = function(x) S[ind.na[[1]][x], ind.na[[2]][x]], 1:length(ind.na[[1]]))
+    ind.na$value <- bestvals
+
+    # Set arbitrarily as best current ordering
+    Sbest <- S
+    Sbestc <- Sc
+    Sbestd <- Sd
+    Sbestl <- Sl
+    Sbesto <- So
+    Sbestord <- Sord
+
+    # Used to store new length, accepted lengths and best length at each iteration
+    lengths <- rep(NA,n)
+    lengths.a <- rep(NA,n)
+    Sbestl.i <- rep(NA, n)
+
+    # Iterate through algorithm n times
+    for(i in 1:n) {
+
+        # determine neighbour to investigate
+        currvals <- sapply(FUN = function(x) S[ind.na[[1]][x], ind.na[[2]][x]], 1:length(ind.na[[1]]))
+        u <- sample(length(currvals), size=w, replace=FALSE)
+
+        # Move to neighbour in configuration space
+        newvals <- Perturb(currvals, u)
+        Snew <- S
+        for(k in 1:length(u)) {
+            Snew[ind.na[[1]][u[k]], ind.na[[2]][u[k]]] <- newvals[u[k]]
+        }
+
+        # calculate "energy" for neighbour
+        Snewc <- CleanData(Snew)
+        Snewd <- CreateDistMatrix(Snewc)
+        Snewo <- seriate(Snewd, method="TSP", control=list(method="2-opt"))
+        Sneword <- Snewc[,get_order(Snewo)]
+        Snewdord <- CreateDistMatrix(Sneword)
+        Snewl <- criterion(Snewdord, method="Path_length")[1]
+        lengths[i] <- Snewl
+
+        # Make the comparisons and accept new
+        # configuration with probability P(Sl, Snewl, T).
+        v <- runif(1,0,1)
+        if(exp((Sl - Snewl)/T) > v) {
+            S <- Snew
+            Sc <- Snewc
+            Sd <- Snewd
+            Sl <- Snewl
+            So <- Snewo
+            Sord <- Sneword
+            lengths.a[i] <- Snewl
+        }
+        else
+            lengths.a[i] <- 0
+
+        # If new configuration is better than current
+        # best, save as new best configuration.
+        if(Snewl < Sbestl) {
+            Sbest <- Snew
+            Sbestc <- Snewc
+            Sbestd <- Snewd
+            Sbestl <- Snewl
+            Sbesto <- Snewo
+            Sbestord <- Sneword
+            ind.na$value <- sapply(FUN = function(x) Sbest[ind.na[[1]][x], ind.na[[2]][x]], 1:length(ind.na[[1]]))
+
+            # Plot to get an idea of how things are going
+            plot(as.delmap(Sbestord), main=sprintf("Plot at iteration %d", i))
+        }
+
+        Sbestl.i[i] <- Sbestl
+
+        # Update parameters
+        T <- T*0.99
+        i <- i + 1
+    }
+
+    class(Sbestc) <- "delmap.data"
+    class(Sbestord) <- "delmap.data"
+
+    plot(Sbestord, main="Final Plot")
+
+    # Return the unordered and ordered data along with lengths and best lengths
+    list(unord=Sbestc[,intersect(names(orig.ord), names(get_order(Sbesto)))], 
+         res=Sbestord, ord=Sbesto, index=ind.na, lengths=lengths, acc=lengths.a, best=Sbestl.i)
+}
+
+
+DeletionMapping <- function(dmap=NULL, niterates=100, nwithin=100,temp=1000, psampled=0.1, method="concorde",...)
+{
+
+    if(!is.delmap(dmap)) stop("Object must be of class delmap.data.")
+   
+    ##-----------------------------##
+    ##  Initialization             ##
+    ##-----------------------------##
+    dmap <- CleanData(dmap, ignoreNA=FALSE)
+    odmap <- ImputeMissingGeno(dmap)
+    o.order <- 1:ncol(dmap)
+    names(o.order) <- colnames(dmap)
+    i.missing <- which(is.na(dmap), arr.ind=TRUE)  # index of missing values
+    v.missing <- odmap[i.missing]                  # values assigned to missing
+    otlength <- 100000   # tour length set to arbritarily larger value to ensure not accepted
+
+    bestmap <- odmap
+    besttlength <- otlength
+
+
+    for (ii in 1:niterates)
+    {
+       
+      for(jj in 1:nwithin)
+      {
+       # create new realization
+         # identify missing values to replace with new sampled values
+         rindx <- sample(1:nrow(i.missing), round(nrow(i.missing)*psampled), replace=FALSE)
+         nvals <- sample(unique(dmap[!is.na(dmap)]),length(rindx), replace=TRUE)
+         # form new realization from old dmap 
+         ndmap <- odmap  # new dmap
+         ndmap[matrix(i.missing[rindx,],ncol=2,byrow=FALSE) ] <- nvals 
+         class(ndmap) <- "delmap.data"
+
+       # find best ordering of new realization and its touring length
+        D <- CreateDistMatrix(ndmap)
+        tD <- as.TSP(D)  # in TSP format
+        tD <- insert_dummy(tD, label="cut")  # adding extra dummy city
+        solu   <- solve_TSP(tD, method=method)
+        ntlength <- attr(solu, "tour_length")
+        n.order <- cut_tour(solu, "cut")  # new marker ordering
+
+       # test if we should move to new realization
+       rnd <- runif(1,0,1)
+       MHprob <- exp( -1*(ntlength-otlength)/temp)
+       if (MHprob >= 1 | rnd < MHprob)
+       { # accept new realization
+         # trick part - need to rearrange i.missing and v.missing to reflect to column ordering
+         lookuptab <- data.frame(old=1:ncol(odmap), new=n.order)
+         indx <- with(lookuptab, match( i.missing[,2], old))         
+         i.missing[,2] <- lookuptab$new[indx]
+
+         ndmap <- odmap[,n.order]
+         class(ndmap) <- "delmap.data"
+         odmap <- ndmap
+         o.order <- n.order
+         otlength <- ntlength
+    
+         #keep track of best realization
+         if(ntlength < besttlength)
+         {
+           bestmap <- ndmap
+           besttlength <- ntlength
+         }
+
+       } # end if 
+      } # end for jj nwithin 
+       # geometric update temperature
+       temp <- 0.95 * temp
+
+     #  plot(bestmap)
+      } # end for ii niterates
+         list(dmap=bestmap, tlength=besttlength)
+}  # end function
+
+
+
+
+
 
