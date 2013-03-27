@@ -1,3 +1,5 @@
+useDynLib(delmap)
+exportPattern("^[[:alpha:]]+")
 export (
        as.delmap, 
        CleanData, 

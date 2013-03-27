@@ -8,3 +8,4 @@ Maintainer: Andrew George <andrew.george@csiro.au>
 Description:  Deletion mapping is a statistical technique for ordering genetic markers. Unlike linkage mapping that is reliant upon recombinations to order loci, deletion mapping depends upon genomic deletions. This package visualizes and analyzes deletion data on inbreds. The data can be read in from file or created withing the package via simulated.  
 License: GPL (>= 2.0)
 Depends: R (>= 2.15.0), TSP, seriation, fields
+LinkingTo: Rcpp

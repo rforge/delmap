@@ -878,81 +878,185 @@ Order <- function(dmat=NULL, n=1000,  w=1, T=1000) {
 }
 
 
+#DeletionMapping <- function(dmap=NULL, niterates=100, nwithin=100,temp=1000, psampled=0.1, method="concorde",...)
+#{
+#
+#    if(!is.delmap(dmap)) stop("Object must be of class delmap.data.")
+#   
+#    ##-----------------------------##
+#    ##  Initialization             ##
+#    ##-----------------------------##
+#    dmap <- CleanData(dmap, ignoreNA=FALSE)
+#    odmap <- ImputeMissingGeno(dmap)
+#    o.order <- 1:ncol(dmap)
+#    names(o.order) <- colnames(dmap)
+#    i.missing <- which(is.na(dmap), arr.ind=TRUE)  # index of missing values
+#    v.missing <- odmap[i.missing]                  # values assigned to missing
+#    otlength <- 100000   # tour length set to arbritarily larger value to ensure not accepted
+#
+#    bestmap <- odmap
+#    besttlength <- otlength
+#
+#
+#    for (ii in 1:niterates)
+#    {
+#       
+#      for(jj in 1:nwithin)
+#      {
+#       # create new realization
+#         # identify missing values to replace with new sampled values
+#         rindx <- sample(1:nrow(i.missing), round(nrow(i.missing)*psampled), replace=FALSE)
+#         nvals <- sample(unique(dmap[!is.na(dmap)]),length(rindx), replace=TRUE)
+#         # form new realization from old dmap 
+#         ndmap <- odmap  # new dmap
+#         ndmap[matrix(i.missing[rindx,],ncol=2,byrow=FALSE) ] <- nvals 
+#         class(ndmap) <- "delmap.data"
+#
+#       # find best ordering of new realization and its touring length
+#        D <- CreateDistMatrix(ndmap)
+#        tD <- as.TSP(D)  # in TSP format
+#        tD <- insert_dummy(tD, label="cut")  # adding extra dummy city
+#        solu   <- solve_TSP(tD, method=method)
+#        ntlength <- attr(solu, "tour_length")
+#        n.order <- cut_tour(solu, "cut")  # new marker ordering
+#
+#       # test if we should move to new realization
+#       rnd <- runif(1,0,1)
+#       MHprob <- exp( -1*(ntlength-otlength)/temp)
+#       if (MHprob >= 1 | rnd < MHprob)
+#       { # accept new realization
+#         # trick part - need to rearrange i.missing and v.missing to reflect to column ordering
+#         lookuptab <- data.frame(old=1:ncol(odmap), new=n.order)
+#         indx <- with(lookuptab, match( i.missing[,2], old))         
+#         i.missing[,2] <- lookuptab$new[indx]
+#
+#         ndmap <- odmap[,n.order]
+#         class(ndmap) <- "delmap.data"
+#         odmap <- ndmap
+#         o.order <- n.order
+#         otlength <- ntlength
+#    
+#         #keep track of best realization
+#         if(ntlength < besttlength)
+#         {
+#           bestmap <- ndmap
+#           besttlength <- ntlength
+#         }
+#
+#       } # end if 
+#      } # end for jj nwithin 
+#       # geometric update temperature
+#       temp <- 0.95 * temp
+#
+#     #  plot(bestmap)
+#      } # end for ii niterates
+#         list(dmap=bestmap, tlength=besttlength)
+#}  # end function
+
+#i.delmapping <- function(dmap, imissing, psampled, odmap, temp, method, otlength, besttlength, bestmap)
+#{
+#         # identify missing values to replace with new sampled values
+#         rindx <- sample(1:nrow(imissing), round(nrow(imissing)*psampled), replace=FALSE)
+#         nvals <- sample(unique(dmap[!is.na(dmap)]),length(rindx), replace=TRUE)
+#         # form new realization from old dmap 
+#         ndmap <- odmap  # new dmap
+#         ndmap[matrix(imissing[rindx,],ncol=2,byrow=FALSE) ] <- nvals
+#         class(ndmap) <- "delmap.data"
+#
+#       # find best ordering of new realization and its touring length
+#        D <- CreateDistMatrix(ndmap)
+#        tD <- as.TSP(D)  # in TSP format
+#        tD <- insert_dummy(tD, label="cut")  # adding extra dummy city
+#        solu   <- solve_TSP(tD, method=method)
+#        ntlength <- attr(solu, "tour_length")
+#        n.order <- cut_tour(solu, "cut")  # new marker ordering
+#
+#       # test if we should move to new realization
+#       rnd <- runif(1,0,1)
+#       MHprob <- exp( -1*(ntlength-otlength)/temp)
+#       if (MHprob >= 1 | rnd < MHprob)
+#      { # accept new realization
+#         # trick part - need to rearrange imissing and v.missing to reflect to column ordering
+#         lookuptab <- data.frame(old=1:ncol(odmap), new=n.order)
+#         indx <- with(lookuptab, match( imissing[,2], old))
+#         imissing[,2] <- lookuptab$new[indx]
+#
+#         ndmap <- odmap[,n.order]
+#         class(ndmap) <- "delmap.data"
+#         odmap <- ndmap
+#         o.order <- n.order
+#         otlength <- ntlength
+#        #keep track of best realization
+#         if(ntlength < besttlength)
+#         {
+#           bestmap <- ndmap
+#           besttlength <- ntlength
+#         }
+#        } ## end if
+#
+#        res <- list(bestmap=bestmap, besttlength=besttlength, odmap=odmap, 
+#                    imissing=imissing, otlength=otlength)
+#        return(res)
+#}
+
+
+##---------------------##
+##  Testing Rcpp       ##
+##---------------------##
+
+
+
+
+testf <- function()
+{
+ return(10)
+}
+
+#Rcpp_DeletionMapping <- function(dmap, imissing, psampled, odmap, temp, method, otlength, besttlength, bestmap){
+#   ret <- .Call( "Rcpp_DeletionMapping", dmap, imissing, psampled, odmap, temp, method, otlength, besttlength, bestmap, PACKAGE="delmap")
+#   return (ret)
+#}
+
+
+
+
+Rcpp_DeletionMapping <- function(){
+    .Call( "Rcpp_DeletionMapping", PACKAGE="delmap")
+}
+
 DeletionMapping <- function(dmap=NULL, niterates=100, nwithin=100,temp=1000, psampled=0.1, method="concorde",...)
 {
-
-    if(!is.delmap(dmap)) stop("Object must be of class delmap.data.")
-   
-    ##-----------------------------##
-    ##  Initialization             ##
-    ##-----------------------------##
-    dmap <- CleanData(dmap, ignoreNA=FALSE)
-    odmap <- ImputeMissingGeno(dmap)
-    o.order <- 1:ncol(dmap)
-    names(o.order) <- colnames(dmap)
-    i.missing <- which(is.na(dmap), arr.ind=TRUE)  # index of missing values
-    v.missing <- odmap[i.missing]                  # values assigned to missing
-    otlength <- 100000   # tour length set to arbritarily larger value to ensure not accepted
-
-    bestmap <- odmap
-    besttlength <- otlength
-
-
-    for (ii in 1:niterates)
-    {
-       
-      for(jj in 1:nwithin)
-      {
-       # create new realization
-         # identify missing values to replace with new sampled values
-         rindx <- sample(1:nrow(i.missing), round(nrow(i.missing)*psampled), replace=FALSE)
-         nvals <- sample(unique(dmap[!is.na(dmap)]),length(rindx), replace=TRUE)
-         # form new realization from old dmap 
-         ndmap <- odmap  # new dmap
-         ndmap[matrix(i.missing[rindx,],ncol=2,byrow=FALSE) ] <- nvals 
-         class(ndmap) <- "delmap.data"
-
-       # find best ordering of new realization and its touring length
-        D <- CreateDistMatrix(ndmap)
-        tD <- as.TSP(D)  # in TSP format
-        tD <- insert_dummy(tD, label="cut")  # adding extra dummy city
-        solu   <- solve_TSP(tD, method=method)
-        ntlength <- attr(solu, "tour_length")
-        n.order <- cut_tour(solu, "cut")  # new marker ordering
-
-       # test if we should move to new realization
-       rnd <- runif(1,0,1)
-       MHprob <- exp( -1*(ntlength-otlength)/temp)
-       if (MHprob >= 1 | rnd < MHprob)
-       { # accept new realization
-         # trick part - need to rearrange i.missing and v.missing to reflect to column ordering
-         lookuptab <- data.frame(old=1:ncol(odmap), new=n.order)
-         indx <- with(lookuptab, match( i.missing[,2], old))         
-         i.missing[,2] <- lookuptab$new[indx]
-
-         ndmap <- odmap[,n.order]
-         class(ndmap) <- "delmap.data"
-         odmap <- ndmap
-         o.order <- n.order
-         otlength <- ntlength
-    
-         #keep track of best realization
-         if(ntlength < besttlength)
-         {
-           bestmap <- ndmap
-           besttlength <- ntlength
-         }
-
-       } # end if 
-      } # end for jj nwithin 
-       # geometric update temperature
-       temp <- 0.95 * temp
-
-     #  plot(bestmap)
-      } # end for ii niterates
-         list(dmap=bestmap, tlength=besttlength)
+    Rcpp_DeletionMapping()
 }  # end function
 
+
+
+
+
+#DeletionMapping <- function(dmap=NULL, niterates=100, nwithin=100,temp=1000, psampled=0.1, method="concorde",...)
+#{
+#    if(!is.delmap(dmap)) stop("Object must be of class delmap.data.")
+#
+#    ##-----------------------------##
+#    ##  Initialization             ##
+#    ##-----------------------------##
+#    dmap <- CleanData(dmap, ignoreNA=FALSE)
+#    odmap <- ImputeMissingGeno(dmap)
+#    o.order <- 1:ncol(dmap)
+#    names(o.order) <- colnames(dmap)
+#    imissing <- which(is.na(dmap), arr.ind=TRUE)  # index of missing values
+#    otlength <- 100000   # tour length set to arbritarily larger value to ensure not accepted
+#
+#    bestmap <- odmap
+#    besttlength <- otlength
+#
+#    #res <- Rcpp_DeletionMapping(dmap,imissing, psampled, odmap, temp, method, otlength, besttlength, bestmap) 
+#    res <- Rcpp_DeletionMapping( )
+#
+#    print(class(res))
+#
+#    #list(dmap=res$bestmap, tlength=res$besttlength)
+#}  # end function
 
 
 
