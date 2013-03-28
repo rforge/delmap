@@ -1,0 +1,24 @@
+Building package with Rcpp functionality
+
+1. To build/check package, it is 
+   R CMD build pkg
+   R CMD check pkg
+
+   Also, I can just run R CMD check pkg if I just want to check if it builds okay. 
+2. To build and install package at the same time, 
+   R CMD INSTALL --build pkg -l ./.
+3. To include Rcpp code in DeletionMapping function
+   a. Adjust NAMESPACE so that useDynLib(delmap)
+   b. Adjust NAMESPACE so that internal function iDeletoinMapping is exported 
+      otherwise it cannot find this function when building. 
+4. Things to remember with Rcpp file in src directory
+   a. Need to include #include "R_ext/Rdynload.h"
+   b. Function heading is RcppExport SEXP RcppDeletionMapping(SEXP Arg1, SEXP Arg2 ..){
+   c. to include an internal function that is in the package delmap
+      Environment delmap("package:delmap");
+      Function iDeletionMapping = delmap["iDeletionMapping"];
+   d. A list created inside a loop is not visable outside the loop. Therefore 
+      if elements are required outside the loop, need to copy it to a global var. 
+      This is to do with scoping. 
+   e. Use using namespace Rcpp to avoid Rcpp:: for all the function. 
+
