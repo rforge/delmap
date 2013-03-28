@@ -1,6 +1,6 @@
 useDynLib(delmap)
-exportPattern("^[[:alpha:]]+")
 export (
+       iDeletionMapping,
        as.delmap, 
        CleanData, 
        Collapse,
