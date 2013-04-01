@@ -878,7 +878,7 @@ Order <- function(dmat=NULL, n=1000,  w=1, T=1000) {
 }
 
 
-#DeletionMapping <- function(dmap=NULL, niterates=100, nwithin=100,temp=1000, psampled=0.1, method="concorde",...)
+#DeletionMappingOLD <- function(dmap=NULL, niterates=100, nwithin=100,temp=1000, psampled=0.1, method="concorde",...)
 #{
 #
 #    if(!is.delmap(dmap)) stop("Object must be of class delmap.data.")
@@ -1007,19 +1007,6 @@ iDeletionMapping <- function(dmap, imissing, psampled, odmap, temp, method, otle
 
 
 
-#iDeletionMapping <- function(dmap, imissing, psampled)
-#{
-# print("In here")
-# return(10)
-#}
-
-#Rcpp_DeletionMapping <- function(dmap, imissing, psampled, odmap, temp, method, otlength, besttlength, bestmap){
-#   ret <- .Call( "Rcpp_DeletionMapping", dmap, imissing, psampled, odmap, temp, method, otlength, besttlength, bestmap, PACKAGE="delmap")
-#   return (ret)
-#}
-
-
-
 
 RcppDeletionMapping <- function(dmap, imissing, psampled, odmap, temp, method, otlength, besttlength, bestmap, niterates, nwithin){
     .Call( "RcppDeletionMapping", dmap, imissing, psampled,  odmap, temp, method, 
@@ -1080,6 +1067,7 @@ DeletionMapping <- function(dmap=NULL, niterates=100, nwithin=100,temp=1000, psa
 #
 #    #list(dmap=res$bestmap, tlength=res$besttlength)
 #}  # end function
+
 
 
 
