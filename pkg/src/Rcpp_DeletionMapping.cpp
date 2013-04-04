@@ -2,7 +2,7 @@
 #include "R_ext/Rdynload.h"
 #include "Rcpp.h"
 
-RcppExport SEXP RcppDeletionMapping(SEXP Arg1, SEXP Arg2, 
+RcppExport SEXP RcppDeletionMapping(SEXP Arg1,  
                           SEXP Arg3, SEXP Arg4, SEXP Arg5,
                           SEXP Arg6, SEXP Arg7, 
                           SEXP Arg8, SEXP Arg9,
@@ -11,12 +11,14 @@ RcppExport SEXP RcppDeletionMapping(SEXP Arg1, SEXP Arg2,
 
     Environment delmap("package:delmap");
     Function iDeletionMapping = delmap["iDeletionMapping"]; 
-   
+
+    Environment base("package:base");
+    Function print = base["print.default"];
+ 
     NumericMatrix dmap(Arg1);
-    NumericMatrix imissing(Arg2);
     NumericVector psampled(Arg3);
     NumericMatrix odmap(Arg4);
-    NumericVector temp(Arg5);
+    double cooling =  as<double>(Arg5);
     CharacterVector  method(Arg6);
     NumericVector otlength(Arg7);
     NumericVector besttlength(Arg8);
@@ -24,19 +26,27 @@ RcppExport SEXP RcppDeletionMapping(SEXP Arg1, SEXP Arg2,
     int outer = as<int>(Arg10);
     int inner = as<int>(Arg11);
 
-    Rprintf( " %i ", inner);
+    double temp;
+    int counter=0;
 
-    List newz = List::create(Named("bestmap") = bestmap,
+    
+    NumericVector  t(outer*inner);
+
+
+
+    temp = 0.5 / pow(cooling, outer);
+
+    List newz = List::create(Named("dmap") = dmap,
+                             Named("bestmap") = bestmap,
                              Named("besttlength") = besttlength,
                              Named("odmap") = odmap,
-                             Named("imissing") = imissing,
-                             Named("otlength") = otlength);
+                             Named("otlength") = otlength,
+                             Named("t") = t );
     for(int ii=0; ii <outer; ii++)
     {
       for( int jj=0; jj < inner; jj++)
      {
-        List z = iDeletionMapping(dmap, 
-                               newz("imissing"), 
+        List z = iDeletionMapping(newz("dmap"), 
                               psampled,
                               newz("odmap"), 
                               temp, 
@@ -44,15 +54,20 @@ RcppExport SEXP RcppDeletionMapping(SEXP Arg1, SEXP Arg2,
                               newz("otlength"), 
                               newz("besttlength"), 
                               newz("bestmap"));
-    
+   
+ 
+        newz("dmap") = z("dmap");
         newz("bestmap") = z("bestmap");
         newz("besttlength") = z("besttlength");
         newz("odmap") = z("odmap");
-        newz("imissing") = z("imissing");
         newz("otlength") = z("otlength");
-     }
-   }
 
+          t(counter) = as<int>(z("besttlength")) ;
+        counter++;
+        
+     }
+      temp = temp * cooling;
+   }
     return wrap(newz) ;
 }
 

@@ -6,11 +6,12 @@
 \code{DeletionMapping} orders the marker loci through the pattern of overlapping observed genomic deletions. 
 }
 \usage{
-DeletionMapping(dmap=NULL, niterates=100, nwithin=100, temp=1000, psampled=0.1, method="concorde",...)
+DeletionMapping(dmap=NULL, niterates=100, nwithin=100, cooling=0.95, psampled=0.1, method="concorde",...)
 }
 \arguments{
   \item{dmap}{
-An object of class \code{\link{delmap.data}}
+An object of class \code{\link{delmap.data}} that contains coded 0, 1 marker genotypes and missing 
+marker genotypes (NAs). 
 }
   \item{niterates}{
 specifies the number of iterations of the simulated annealing algrorithm to perform
@@ -19,8 +20,8 @@ specifies the number of iterations of the simulated annealing algrorithm to perf
 specifies the number of iterations of the simulated annealing algorithm to perform 
 for a given temperature
 }
- \item{temp}{
-starting temperature for the simulated annealing algorithm.
+ \item{cooling}{
+coefficient (between 0 and 1) for geometric cooling of temperature for the simulated annealing algorithm.
 }
  \item{psampled}{
 the proportion of missing genotypes to impute with new values at each iteration of the simulated 
@@ -45,13 +46,15 @@ Andrew W George
 \code{\link{Collapse}}
 }
 \examples{
+
 d <-   SimDeletions( numlines = 50, plines = 0.2, nummarkers = 50,
     Enumdel = 8, p.missing = 0.1,  seed = 1)
 
 dc <- CleanData(d[["missing"]])
 
 permdc <- PermuteCols(dc)
-a <- DeletionMapping(dmap=permdc, niterates=50, nwithin=50, temp=50, psampled=0.2, method="2-opt")
+a <- DeletionMapping(dmap=permdc, niterates=5, nwithin=5, cooling=0.95, psampled=0.2, method="2-opt")
+names(a)
 
 
 # to run the exact TSP solver concorde, first specify the absolute path of where it 

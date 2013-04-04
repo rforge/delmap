@@ -592,15 +592,68 @@ IdentifyMarkerOrd <- function(dmat = NULL)
 
 
 
-ImputeMissingGeno <- function(dmat=NULL)
+ImputeMissingGeno <- function(dmat=NULL,  uniform=TRUE)
 {
-  ## Assign 0,1 values to missing genotypes
+   if(!is.delmap(dmat)) stop("Object must be of class delmap.data.")
 
- ## identify elements that have missing genotypes (NA)
- indx <- which(is.na(dmat), arr.ind=TRUE)
- dmat[indx] <- sample(unique(dmat)[!is.na(unique(dmat))], nrow(indx), replace=T)
- dmat
-}  ## end function ImputeMissingGeno
+   indx <- which(is.na(dmat), arr.ind=TRUE)
+   if(uniform)
+      dmat[indx] <- sample(unique(dmat)[!is.na(unique(dmat))], nrow(indx), replace=T)
+
+   if(!uniform) {
+     
+      for(ii in 1:nrow(indx))
+      {
+        ro <- indx[ii,1]; co <- indx[ii,2]
+        if (co > 1 & co < ncol(dmat) ) {
+           jjr <- jjl <- co
+           
+           while(is.na(dmat[ro,jjr])  & jjr != ncol(dmat)) jjr <- jjr+1
+           while(is.na(dmat[ro,jjl]) &  jjl != 1)           jjl <- jjl- 1
+           if (sum(dmat[ro, c(jjl, jjr)], na.rm=TRUE) == 0)  dmat[ro,co] <- sample(0:1, 1, prob=c(0.95, 0.05))
+           if (sum(dmat[ro, c(jjl, jjr)], na.rm=TRUE) == 1)  dmat[ro,co] <- sample(0:1, 1, prob=c(0.5, 0.5))
+           if (sum(dmat[ro, c(jjl, jjr)], na.rm=TRUE) == 2)  dmat[ro,co] <- sample(0:1, 1, prob=c(0.05, 0.95))
+         } ## end if
+
+        if (co==1) {
+           jjr <- co
+           while(is.na(dmat[ro,jjr])  & jjr != ncol(dmat)) jjr <- jjr+1
+           if (dmat[ro, jjr] == 0)  dmat[ro,co] <- sample(0:1, 1, prob=c(0.95, 0.05))
+           if (dmat[ro, jjr] == 1)  dmat[ro,co] <- sample(0:1, 1, prob=c(0.5, 0.5))
+         } # end if
+         if (co == ncol(dmat)) {
+           jjl <- co
+           while(is.na(dmat[ro,jjl]) & jjl != 1) jjl <- jjl - 1
+           if (dmat[ro, jjl] == 0)  dmat[ro,co] <- sample(0:1, 1, prob=c(0.95, 0.05))
+           if (dmat[ro, jjl] == 1)  dmat[ro,co] <- sample(0:1, 1, prob=c(0.5, 0.5))
+         } # end if
+
+
+      } # end for
+
+
+   }  ## end if !uniform
+
+   return(dmat)
+
+}  ## end function 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -953,38 +1006,41 @@ Order <- function(dmat=NULL, n=1000,  w=1, T=1000) {
 #         list(dmap=bestmap, tlength=besttlength)
 #}  # end function
 
-iDeletionMapping <- function(dmap, imissing, psampled, odmap, temp, method, otlength, besttlength, bestmap)
+iDeletionMapping <- function(dmap,  psampled, odmap, temp, method, otlength, besttlength, bestmap)
 {
-         # identify missing values to replace with new sampled values
-         rindx <- sample(1:nrow(imissing), round(nrow(imissing)*psampled), replace=FALSE)
-         nvals <- sample(unique(dmap[!is.na(dmap)]),length(rindx), replace=TRUE)
-         # form new realization from old dmap 
-         ndmap <- odmap  # new dmap
-         ndmap[matrix(imissing[rindx,],ncol=2,byrow=FALSE) ] <- nvals
-         class(ndmap) <- "delmap.data"
+
+
+       # impute missing marker genotypes
+       ndmap <- ImputeMissingGeno(dmat=dmap, uniform=FALSE)
+
+
 
        # find best ordering of new realization and its touring length
-        D <- CreateDistMatrix(ndmap)
-        tD <- as.TSP(D)  # in TSP format
-        tD <- insert_dummy(tD, label="cut")  # adding extra dummy city
-        solu   <- solve_TSP(tD, method=method)
-        ntlength <- attr(solu, "tour_length")
-        n.order <- cut_tour(solu, "cut")  # new marker ordering
+       D <- CreateDistMatrix(ndmap)
+       tmpD <- as.matrix(D)
+       indxr <- which(rownames(tmpD)=="cut")
+       indxc <- which(colnames(tmpD)=="cut")
+       tmpD[indxr,] <- 0
+       tmpD[,indxc] <- 0
+       D <- as.dist(tmpD)
 
+       tD <- as.TSP(D)  # in TSP format
+       ### tD <- insert_dummy(tD, label="cut")  # adding extra dummy city
+       solu   <- solve_TSP(tD, method=method)
+       ntlength <- attr(solu, "tour_length")
+       n.order <- cut_tour(solu, "cut")  # new marker ordering
+       n.order <- c(n.order, ncol(ndmap)) # adding "cut" back in
        # test if we should move to new realization
        rnd <- runif(1,0,1)
        MHprob <- exp( -1*(ntlength-otlength)/temp)
        if (MHprob >= 1 | rnd < MHprob)
       { # accept new realization
-         # trick part - need to rearrange imissing and v.missing to reflect to column ordering
-         lookuptab <- data.frame(old=1:ncol(odmap), new=n.order)
-         indx <- with(lookuptab, match( imissing[,2], old))
-         imissing[,2] <- lookuptab$new[indx]
+        # rearrange dmap to be new order
+         dmap <- dmap[, n.order]  # reorder data with missing data
+         ndmap <- ndmap[,n.order] # reorder  newly imputed data
+         class(dmap) <- class(ndmap) <- "delmap.data"
 
-         ndmap <- odmap[,n.order]
-         class(ndmap) <- "delmap.data"
-         odmap <- ndmap
-         o.order <- n.order
+         odmap <- ndmap  # assign newly imputed data to current data
          otlength <- ntlength
         #keep track of best realization
          if(ntlength < besttlength)
@@ -995,7 +1051,11 @@ iDeletionMapping <- function(dmap, imissing, psampled, odmap, temp, method, otle
         } ## end if
 
         res <- list(bestmap=bestmap, besttlength=besttlength, odmap=odmap, 
-                    imissing=imissing, otlength=otlength)
+                     otlength=otlength, dmap=dmap)
+
+        
+
+
         return(res)
 }
 
@@ -1006,67 +1066,38 @@ iDeletionMapping <- function(dmap, imissing, psampled, odmap, temp, method, otle
 
 
 
-
-
-RcppDeletionMapping <- function(dmap, imissing, psampled, odmap, temp, method, otlength, besttlength, bestmap, niterates, nwithin){
-    .Call( "RcppDeletionMapping", dmap, imissing, psampled,  odmap, temp, method, 
+RcppDeletionMapping <- function(dmap,  psampled, odmap, cooling, method, otlength, besttlength, bestmap, niterates, nwithin){
+    .Call( "RcppDeletionMapping", dmap,  psampled,  odmap, cooling, method, 
                                   otlength, besttlength, bestmap, 
                                   niterates, nwithin, PACKAGE="delmap")
 }
 
-DeletionMapping <- function(dmap=NULL, niterates=100, nwithin=100,temp=1000, psampled=0.1, method="concorde",...)
+DeletionMapping <- function(dmap=NULL, niterates=100, nwithin=100,cooling=0.99 , psampled=0.1, method="concorde",...)
 {
     if(!is.delmap(dmap)) stop("Object must be of class delmap.data.")
-
+     if( cooling < 0 | cooling > 1) stop(" Cooling constant must be between 0 and 1")
     ##-----------------------------##
     ##  Initialization             ##
     ##-----------------------------##
     dmap <- CleanData(dmap, ignoreNA=FALSE)
+
+    ## add cut to dmap
+    n <- colnames(dmap)
+    dmap <- cbind(dmap, rep(0, nrow(dmap)))
+    colnames(dmap) <- c(n , "cut")
+    class(dmap) <- "delmap.data"
+
     odmap <- ImputeMissingGeno(dmap)
-    o.order <- 1:ncol(dmap)
-    names(o.order) <- colnames(dmap)
-    imissing <- which(is.na(dmap), arr.ind=TRUE)  # index of missing values
-    otlength <- 100000   # tour length set to arbritarily larger value to ensure not accepted
-
     bestmap <- odmap
-    besttlength <- otlength
+    otlength <- besttlength <- 1000000  # starting tour length.
 
-
-    res <- RcppDeletionMapping(dmap, imissing, psampled, odmap,temp, method, 
+    res <- RcppDeletionMapping(dmap,  psampled, odmap,cooling, method, 
                              otlength, besttlength, bestmap, niterates, nwithin)
-    print(res)
-    #return(list(dmap=res$bestmap, tlength=res$besttlength))
+    print(names(res))
+
+    return(list(bestmap=res$bestmap, besttlength=res$besttlength, t=res$t))
 
 }  # end function
-
-
-
-
-
-#DeletionMapping <- function(dmap=NULL, niterates=100, nwithin=100,temp=1000, psampled=0.1, method="concorde",...)
-#{
-#    if(!is.delmap(dmap)) stop("Object must be of class delmap.data.")
-#
-#    ##-----------------------------##
-#    ##  Initialization             ##
-#    ##-----------------------------##
-#    dmap <- CleanData(dmap, ignoreNA=FALSE)
-#    odmap <- ImputeMissingGeno(dmap)
-#    o.order <- 1:ncol(dmap)
-#    names(o.order) <- colnames(dmap)
-#    imissing <- which(is.na(dmap), arr.ind=TRUE)  # index of missing values
-#    otlength <- 100000   # tour length set to arbritarily larger value to ensure not accepted
-#
-#    bestmap <- odmap
-#    besttlength <- otlength
-#
-#    #res <- Rcpp_DeletionMapping(dmap,imissing, psampled, odmap, temp, method, otlength, besttlength, bestmap) 
-#    res <- Rcpp_DeletionMapping( )
-#
-#    print(class(res))
-#
-#    #list(dmap=res$bestmap, tlength=res$besttlength)
-#}  # end function
 
 
 
