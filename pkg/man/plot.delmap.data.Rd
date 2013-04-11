@@ -34,7 +34,6 @@ James Totterdell
 }
 \examples{
 # generate deletion data
-
 Slist <-  SimDeletions( numlines = 50, plines = 0.2, nummarkers = 20,
     Enumdel = 4, p.missing = 0.02,  seed = 1)
 

@@ -452,7 +452,7 @@ CleanData <- function(dmat=NULL, ignoreNA=FALSE)
   ##            Removing of noninformative rows/columns.
   ##            If ignoreNA=TRUE, rows and columns are removed without regard to NA's if they carry no deletions
   ##            IF ignoreNA=FALSE, only rows without deletions and/or columns with no NA's and 
-  ##            deletions are removed. That is, a column is only removed if it carrys no deletions and has 
+  ##            no deletions are removed. That is, a column is only removed if it carrys no deletions and has 
   ##            no NA's 
     if (!is.delmap(dmat)) 
         stop("Error! object not of class delmap.data")
@@ -506,23 +506,47 @@ IdentifyMarkerBlocks <- function(dmat = NULL)
   ##           These blocks can be in different orders. 
   ## Args:     dmat -  matrix of deletion data in true marker order
   ## Returns:  integer vector of blocks
+  ##
+  ## Note:     All columns with no deletions are assigned to be frome the same block
+  ##           NA's not allowed
 
+
+  if(any(is.na(dmat))) stop("Error.  NA's not allowed.")
+  if(!is.delmap(dmat)) stop("Error.  Object must be of class delmap.data.")
 
   marker.groupings <- rep(FALSE, ncol(dmat)-1)
+  group.indx <- rep(NA, ncol(dmat))
+  zeroblockindx <- NULL
+ 
   ## Determining separate groupings of markers
   for(ii in 2:ncol(dmat))
     if (dmat[,ii-1] %*% dmat[, ii] > 0)
         marker.groupings[ii-1] <-  TRUE
 
-  indx <- 1
-  group.indx <- rep(NA, ncol(dmat))
-  group.indx[1] <- indx
+  if(sum(dmat[,1])==0) { 
+     zeroblockindx <- 1
+     blockindx <- 1
+     group.indx[1] <- zeroblockindx
+   } else {
+     blockindx <- 1
+     group.indx[1] <- blockindx
+   }
   for(ii in 2:ncol(dmat))
   {
-    if(!marker.groupings[ii-1])
-        indx <- indx + 1
-    group.indx[ii] <- indx
+    if(sum(dmat[,ii])==0){
+       if(is.null(zeroblockindx)) {
+         # zeroblock indx not set yet
+         zeroblockindx <- blockindx + 1
+         blockindx <- blockindx + 1
+        }
+       group.indx[ii] <- zeroblockindx
+     } else {
+      if(!marker.groupings[ii-1])
+          blockindx <- blockindx + 1
+      group.indx[ii] <- blockindx
+    }
   }
+  names(group.indx) <- colnames(dmat)
   return(group.indx)
 } ## end function
 
@@ -536,6 +560,9 @@ IdentifyMarkerOrd <- function(dmat = NULL)
   ## Returns:  list where each element is a integer vector or possible orderings
 
 
+  if(!is.delmap(dmat)) stop("Error. Object must be of class delmap.data.")
+
+
   ## Order rows/lines based on deletion pattern
   d <- dmat
   class(d) <- "matrix" 
@@ -544,17 +571,18 @@ IdentifyMarkerOrd <- function(dmat = NULL)
   ## identify any marker blocks
   blocks <- IdentifyMarkerBlocks(dmat)
 
-  list.orders <- list(blocks=blocks, orders=NULL)
+  list.orders <- list(blocks=blocks, orders=list())
 
   for( jj in unique(blocks) )
   {
 
-     indx <- which(blocks==jj)
-     if(length(indx)==1)
+     cindx <- which(blocks==jj)
+     if(length(cindx)==1)
      {
       list.orders$orders[[jj]] <- 1
+      names(list.orders$orders[[jj]]) <- names(blocks)[cindx]
      } else {
-     dat <- dmat[, indx]
+     dat <- dmat[, cindx]
      ## determine: change in number of deletions across loci
      num.deletions <- colSums( dat[get_order(sord[1]),]   )
      change.in.number.of.deletions  <- rep(FALSE, ncol(dat)-1)
@@ -583,6 +611,7 @@ IdentifyMarkerOrd <- function(dmat = NULL)
        orderings[ii] <- indx
      }
      list.orders$orders[[jj]] <- orderings
+     names(list.orders$orders[[jj]]) <- colnames(dmat)[cindx]
      } ## end if else
     } ## end jj
     return(list.orders)
@@ -627,28 +656,11 @@ ImputeMissingGeno <- function(dmat=NULL,  uniform=TRUE)
            if (dmat[ro, jjl] == 0)  dmat[ro,co] <- sample(0:1, 1, prob=c(0.95, 0.05))
            if (dmat[ro, jjl] == 1)  dmat[ro,co] <- sample(0:1, 1, prob=c(0.5, 0.5))
          } # end if
-
-
       } # end for
-
-
    }  ## end if !uniform
-
    return(dmat)
 
 }  ## end function 
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -676,9 +688,9 @@ plot.delmap.data <- function(x, main=NULL,...)
     points(indx[, 2], indx[, 1], cex=1)
     indx <- which(x == 1, arr.ind = TRUE)
     points(indx[, 2], indx[, 1], pch = 19, cex=1)
-    t <- c(0, findInterval(unique(IdentifyMarkerBlocks(x)), IdentifyMarkerBlocks(x)))
+    t <- c(0, findInterval(unique(IdentifyMarkerBlocks(as.delmap(x))), IdentifyMarkerBlocks(as.delmap(x))))
     segments(x0 = t + 0.5, y0 = 0.5, y1 = max(dimr) + 0.5)
-    axis(1, (t[-length(t)] + t[-1])/2, sprintf("B%d", unique(IdentifyMarkerBlocks(x))), 
+    axis(1, (t[-length(t)] + t[-1])/2, sprintf("B%d", unique(IdentifyMarkerBlocks(as.delmap(x)))), 
         las = 3, tick = FALSE, mgp=c(0,0,0),cex.axis = 0.75)
 
 
@@ -711,7 +723,7 @@ plot.delmap.data <- function(x, main=NULL,...)
 as.delmap.matrix <- function(x)
 {
   # convert matrix object into delmap.data object.
-  # matrix is given generic marker and line names. 
+  # matrix is given generic marker and line names if col and row names are null.
   
   # checks
   if(ncol(x) < 2) stop("Matrix must contain more than a single column.")
@@ -730,12 +742,15 @@ as.delmap.matrix <- function(x)
      x[which(x== as.numeric(names(t[2])), arr.ind=TRUE)] <- 0
      x[which(x== as.numeric(names(t[1])), arr.ind=TRUE)] <- 1
  } 
- 
+
+
+
+    
   ## create generic marker names
-  colnames(x) <- paste("M", 1:ncol(x), sep="")
+  if(is.null(colnames(x))) colnames(x) <- paste("M", 1:ncol(x), sep="")
 
   ## abbreviate line names
-  rownames(x)  <- paste("L", 1:nrow(x), sep="")
+  if(is.null(rownames(x))) rownames(x)  <- paste("L", 1:nrow(x), sep="")
 
   # new class of object where object contains matrix data with special attributes
   class(x) <- "delmap.data"
@@ -1006,13 +1021,10 @@ Order <- function(dmat=NULL, n=1000,  w=1, T=1000) {
 #         list(dmap=bestmap, tlength=besttlength)
 #}  # end function
 
-iDeletionMapping <- function(dmap,  psampled, odmap, temp, method, otlength, besttlength, bestmap)
+iDeletionMapping <- function(dmap,  psampled, odmap, temp, method, otlength, besttlength, bestmap, blockstr, mrkord, bestdist)
 {
-
-
        # impute missing marker genotypes
        ndmap <- ImputeMissingGeno(dmat=dmap, uniform=FALSE)
-
 
 
        # find best ordering of new realization and its touring length
@@ -1047,35 +1059,35 @@ iDeletionMapping <- function(dmap,  psampled, odmap, temp, method, otlength, bes
          {
            bestmap <- ndmap
            besttlength <- ntlength
+           blockstrbest <- IdentifyMarkerBlocks(bestmap)
+           bestdist <- RearrangeDist(blockstr, mrkord, blockstrbest)
          }
         } ## end if
 
-        res <- list(bestmap=bestmap, besttlength=besttlength, odmap=odmap, 
-                     otlength=otlength, dmap=dmap)
+        if(!is.null(blockstr) & !is.null(mrkord))
 
-        
+        blockstrobs <- IdentifyMarkerBlocks(odmap)
+        tmp <- RearrangeDist(blockstr, mrkord, blockstrobs) ## calculate distance metric
+        print(tmp)
+
+        res <- list(bestmap=bestmap, besttlength=besttlength, odmap=odmap, 
+                     otlength=otlength, dmap=dmap, bestdist=bestdist)
+
 
 
         return(res)
 }
 
 
-##---------------------##
-##  Testing Rcpp       ##
-##---------------------##
 
 
-
-RcppDeletionMapping <- function(dmap,  psampled, odmap, cooling, method, otlength, besttlength, bestmap, niterates, nwithin){
-    .Call( "RcppDeletionMapping", dmap,  psampled,  odmap, cooling, method, 
-                                  otlength, besttlength, bestmap, 
-                                  niterates, nwithin, PACKAGE="delmap")
-}
-
-DeletionMapping <- function(dmap=NULL, niterates=100, nwithin=100,cooling=0.99 , psampled=0.1, method="concorde",...)
+DeletionMapping <- function(dmap=NULL, niterates=100, nwithin=100,cooling=0.99 , psampled=0.1, 
+                            method="concorde", blockstr=NULL, mrkord=NULL, ...)
 {
     if(!is.delmap(dmap)) stop("Object must be of class delmap.data.")
-     if( cooling < 0 | cooling > 1) stop(" Cooling constant must be between 0 and 1")
+    if( cooling < 0 | cooling > 1) stop(" Cooling constant must be between 0 and 1")
+
+
     ##-----------------------------##
     ##  Initialization             ##
     ##-----------------------------##
@@ -1090,14 +1102,266 @@ DeletionMapping <- function(dmap=NULL, niterates=100, nwithin=100,cooling=0.99 ,
     odmap <- ImputeMissingGeno(dmap)
     bestmap <- odmap
     otlength <- besttlength <- 1000000  # starting tour length.
+    bestdist <- list("ntrueblocks"=0, "nobsblocks"=0, "mindist"=0, "minwrong"=0)
 
-    res <- RcppDeletionMapping(dmap,  psampled, odmap,cooling, method, 
-                             otlength, besttlength, bestmap, niterates, nwithin)
-    print(names(res))
+    counter <- 1  
+   t <- rep(NA, niterates*nwithin)
 
-    return(list(bestmap=res$bestmap, besttlength=res$besttlength, t=res$t))
+    temp <- 0.5/(cooling**niterates)
+
+    for(ii in 1:niterates)
+    {
+      for(jj in 1:nwithin)
+      {
+
+       # impute missing marker genotypes
+       ndmap <- ImputeMissingGeno(dmat=dmap, uniform=FALSE)
+
+       # find best ordering of new realization and its touring length
+       D <- CreateDistMatrix(ndmap)
+       tmpD <- as.matrix(D)
+       indxr <- which(rownames(tmpD)=="cut")
+       indxc <- which(colnames(tmpD)=="cut")
+       tmpD[indxr,] <- 0
+       tmpD[,indxc] <- 0
+       D <- as.dist(tmpD)
+
+       tD <- as.TSP(D)  # in TSP format
+       ### tD <- insert_dummy(tD, label="cut")  # adding extra dummy city
+       solu   <- solve_TSP(tD, method=method)
+       ntlength <- attr(solu, "tour_length")
+       n.order <- cut_tour(solu, "cut")  # new marker ordering
+       n.order <- c(n.order, ncol(ndmap)) # adding "cut" back in
+       # test if we should move to new realization
+       rnd <- runif(1,0,1)
+       MHprob <- exp( -1*(ntlength-otlength)/temp)
+       if (MHprob >= 1 | rnd < MHprob)
+      { # accept new realization
+        # rearrange dmap to be new order
+         dmap <- dmap[, n.order]  # reorder data with missing data
+         ndmap <- ndmap[,n.order] # reorder  newly imputed data
+         class(dmap) <- class(ndmap) <- "delmap.data"
+
+         odmap <- ndmap  # assign newly imputed data to current data
+         otlength <- ntlength
+        #keep track of best realization
+         if(ntlength < besttlength)
+         {
+           bestmap <- ndmap
+           besttlength <- ntlength
+           blockstrbest <- IdentifyMarkerBlocks(bestmap)
+           bestdist <- RearrangeDist(blockstr, mrkord, blockstrbest)
+         }
+        } ## end if
+
+        if(!is.null(blockstr) & !is.null(mrkord))
+
+        blockstrobs <- IdentifyMarkerBlocks(odmap)
+        tmp <- RearrangeDist(blockstr, mrkord, blockstrobs) ## calculate distance metric
+        print(tmp)
+
+        t[counter] <- besttlength
+        counter <- counter + 1
+
+       }
+       temp <- temp * cooling
+    }
+
+
+    return(list(bestmap=bestmap, besttlength=besttlength, t=t, bestdist=bestdist))
 
 }  # end function
+
+
+##--------------------------------##
+## Under Construction             ##
+##--------------------------------##
+
+## workign on distance Metric
+
+d <-   SimDeletions( numlines = 50, plines = 0.2, nummarkers = 50,
+    Enumdel = 8, p.missing = 0.1,  seed = 1)
+
+dc <- CleanData(d[["missing"]])
+
+
+## obtain true blocking structure
+mrks <- colnames(dc)
+cindx <- match(mrks, colnames(d[["nomissing"]]))
+dn <- as.delmap(d[["nomissing"]][,cindx])
+trueblockstr <- IdentifyMarkerBlocks(dn)
+truemrkord   <- IdentifyMarkerOrd(dn)$orders
+
+
+
+
+#===================================================
+# Calculates the L1 distance for a single symbol
+# x: the symbol locations for the text string
+# y: the symbol locations for the pattern string
+#===================================================
+l1Dist.single <- function(x, y) {
+    sum(abs(x-y))
+}
+
+#===================================================
+# Calculates the L1 distance of two strings
+# Refer to Chapter 2 of pattern matching paper.
+# x: the text string (resultant order from algorithm)
+# y: the pattern string (known true ordering)
+# i: attempt to account for strings of differing lengths
+#===================================================
+l1Dist <- function(x, y, i=1) {
+
+    cost1 <- 0
+    cost2 <- 0
+
+    if(length(x) == length(y)) {
+
+        # Extract index locations for each seperate symbol
+        phix <- lapply(sort(unique(x)), function(k) which(x==k))
+        phiy <- lapply(sort(unique(y)), function(k) which(y==k))
+        phiz <- lapply(sort(unique(y)), function(k) which(rev(y)==k))
+
+        # Calculate cost for both y and rev(y) i.e. z
+        cost1 <- sum(sapply(1:length(phix), function(i) l1Dist.single(phix[[i]],phiy[[i]])))
+        cost2 <- sum(sapply(1:length(phix), function(i) l1Dist.single(phix[[i]],phiz[[i]])))
+    }
+
+    # For what this is attempting to do: refer to 3.2 in "Pattern Matching
+    # with address errors: rearrangement distances" The Case of Text and Pattern
+    # of Different Sizes. Doesn't quite work how I want it to.
+    else {
+
+        # Extract index locations for each seperate symbol, but only
+        # for the symbols that are in both strings
+        phix <- lapply(sort(unique(x)), function(k) which(x==k))
+        phiy <- lapply(sort(unique(x)), function(k) which(y[y%in%x]==k))
+        phiz <- lapply(sort(unique(x)), function(k) which(rev(y[y%in%x])==k))
+        
+        
+        y.i <- which(y==(y[y%in%x]))
+        z.i <- which(rev(y)==(rev(y)[rev(y)%in%x]))
+
+        # Calc distance for single symbol, but adjust the position index by i
+        cost1 <- sum(sapply(1:length(phix), function(k) l1Dist.single(phix[[k]]+i-1,phiy[[k]]+y.i[1]-1)))
+        cost2 <- sum(sapply(1:length(phix), function(k) l1Dist.single(phix[[k]]+i-i,phiz[[k]]+z.i[1]-1)))
+    }
+    return(min(cost1,cost2))
+}
+
+
+
+RearrangeDist <- function(blockstr=NULL, mrkord=NULL, blockstrobs=NULL)
+{
+## blockstr    vector object for true block structure (order specific)
+## mrkord      list object of true marker ordering within block structure (order specific)
+## blockstrobs vector object of realized block structure from simulated annealing  (order specific)
+
+##-------------------------------------------------------------------------##
+## Overview of Distance Metric                                             ##
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~                                           ##
+##                                                                         ##
+## Very challenging to invent a single univariate metric                   ##
+## Have to cope with differences in block structure, differeces in         ##
+## which markers appear in the blocks, the order of the markers within     ##
+## a block, different numbers of markers within a block.                   ##
+##                                                                         ##
+## Example                                                                 ##
+## Suppose the truth is as follows                                         ##
+##  M1 M2 M3 M4 M5     M6 M7 M8 M9   -- marker names                       ##
+##  1  1  2  2  3      1  1  2  2    -- pattern of identical markers       ##
+##                                                                         ##
+## Realized/observed ordering                                              ##
+##  M1 M6 M5 M4   M2 M7    M3 M6 M8      M9                                ##
+##   1  1  2  2   1  2     1  2  3       1                                 ##
+##                                                                         ##
+##                                                                         ##
+## Multivariate distance metric                                            ##
+## Dimensions  1. # of blocks                                              ##
+##             2. total min rearrangement distance                         ##
+##             3. number of wrongly blocked markers                        ##
+##                                                                         ##
+## # of blocks: (True)  2                                                  ##
+##              (False) 4                                                  ##
+##                                                                         ##
+## total min rearrangement distance                                        ##
+##  Block1:                                                                ##
+##  compare M1  M4 M5                                                      ##
+##          1   2  3                                                       ##
+##  with                                                                   ##
+##          M1  M5 M4                                                      ##
+##          1   3  2                                                       ##
+## Alot going on                                                           ##
+## * first, for blocks 1, 2, 3, and 4, I identified the true block       ##
+##      that it "best" matches.                                            ##
+## * second, I am only considering those markers that are in common        ##
+##      between the truth and the realized.                                ##
+## * third, I am recoding the realized markers based on the recoding       ##
+##      used in the truth (i.e. 1 3 2 for realized instead of              ##
+##      1  2  2 for realized.                                              ##
+##      this is because only the truth matters and I want to see how       ##
+##      close my ordering is to the truth.                                 ##
+##                                                                         ##
+## minimum number of misplaced markers (i.e. in wrong blocks               ##
+##                                                                         ##
+##-------------------------------------------------------------------------##
+
+##------------------------------------##
+## Number of blocks                   ##
+##------------------------------------##
+
+## number of blocks - true and observed
+res <- list()
+res[["ntrueblocks"]] <- length(unique(blockstr))
+res[["nobsblocks"]]  <- length(unique(blockstrobs))
+
+
+
+##---------------------------------------------##
+## Total minumum rearrangement distance        ##
+## Total minimum wrongly placed markers        ##
+##---------------------------------------------##
+
+
+## calculate total rearrangement distance
+total.dist <- 0  ## initalize total rearrangement distance
+total.wrong <- 0 ## initalize total min number of wrongly placed markers
+for(ii in unique(blockstrobs))
+{
+ ## identify which true block best matches the observed block (based on max number of matching markers)
+ m.obs <- names(blockstrobs)[which(blockstrobs==ii)] 
+
+ tb <- table(blockstr[match(m.obs, names(blockstr))])  ## frequency of markers in true blocks
+ best.block <- as.numeric(names(which(max(tb)==tb)))  ## best block (may be more than one if ties
+
+ vdist <- rep(NA, length(best.block))
+ vwrong <- rep(NA, length(best.block))  ## wrongly placed markers
+ for(jj in best.block)  ## allowing for ties of best block
+ {
+   ##  only keep matching (intersection of)  markers in m.obs and m
+   m <- names(blockstr)[which(blockstr==jj)]
+   m.obs.match <- m.obs[!is.na(match(m.obs, m))]
+   m.match <- m[!is.na(match(m, m.obs))]
+   ## recode common markers in m and m.obs but conditional on true marker recoding (mrkord)
+   m.obs.recoded <- unlist(mrkord)[match(m.obs.match, names(unlist(mrkord)))]  ## using coding of true ordering
+   m.recoded <- unlist(mrkord)[ match(m.match, names(unlist(mrkord)))]  ## using coding of true ordering
+ 
+   vdist[which(best.block==jj)] <- l1Dist(m.obs.recoded, m.recoded)  ## rearrangement distance
+   vwrong[which(best.block==jj)] <- length(m.obs) - length(m.obs.match)  ## number of wrongly placed markers
+ }     ## end for jj
+ total.dist <- total.dist + min(vdist)
+ total.wrong <- total.wrong + min(vwrong)
+
+ 
+} ## end for ii over unique observed blocks
+res[["mindist"]] <- total.dist
+res[["minwrong"]] <- total.wrong
+
+return(res)
+
+} ## end function
+
 
 
 

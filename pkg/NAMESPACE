@@ -1,6 +1,4 @@
-useDynLib(delmap)
 export (
-       iDeletionMapping,
        as.delmap, 
        CleanData, 
        Collapse,
@@ -12,8 +10,8 @@ export (
        CreateDistMatrix,
        IdentifyMarkerOrd,
        PermuteCols,   
-       ReadData
-        )
+       ReadData,
+       RearrangeDist)
 S3method(as.delmap, matrix)
 S3method(print, delmap.data)
 S3method(plot, delmap.data)
