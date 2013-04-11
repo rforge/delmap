@@ -14,7 +14,7 @@ CleanData(dmat= NULL, ignoreNA=FALSE)
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{dmat}{
-An object of class \code{\link{delmap.data}}
+An object of class \code{\link{dmdata}}
 }
   \item{ignoreNA}{
 A logical variable. When TRUE, NA's are ignored and a row/column is only retained if it carrys at least 
@@ -31,7 +31,7 @@ Here, the assumption is that if a plant(row) has no recorded
 deletions, then it is unlikely that the NA's are deletions.  
 }
 \value{
-An object of class \code{\link{delmap.data}}.
+An object of class \code{\link{dmdata}}.
 }
 \author{
 Andrew W George

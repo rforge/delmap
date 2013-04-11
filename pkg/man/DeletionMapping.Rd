@@ -11,7 +11,7 @@ DeletionMapping(dmap=NULL, niterates=100, nwithin=100, cooling=0.99, psampled=0.
 }
 \arguments{
   \item{dmap}{
-An object of class \code{\link{delmap.data}} that contains coded 0, 1 marker genotypes and missing 
+An object of class \code{\link{dmdata}} that contains coded 0, 1 marker genotypes and missing 
 marker genotypes (NAs). 
 }
   \item{niterates}{
@@ -41,7 +41,7 @@ annealing algorithm.
 Simulated annealing ...
 }
 \value{
-An object of class \code{\link{delmap.data}}.
+An object of class \code{\link{dmdata}}.
 }
 \author{
 Andrew W George
@@ -61,7 +61,7 @@ dclean <- CleanData(dfull[["missing"]])
 # obtain blocking structure  for the simulated true data
 mrks <- colnames(dclean)
 cindx <- match(mrks, colnames(dfull[["nomissing"]]))
-dnoNA <- as.delmap(dfull[["nomissing"]][,cindx])
+dnoNA <- as.dmdata(dfull[["nomissing"]][,cindx])
 trueblockstr <- IdentifyMarkerBlocks(dnoNA)  ## simulated true block structure
 truemrkord   <- IdentifyMarkerOrd(dnoNA)$orders  ## simulated true marker structure
 

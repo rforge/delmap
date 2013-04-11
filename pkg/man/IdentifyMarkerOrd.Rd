@@ -14,7 +14,7 @@ IdentifyMarkerOrd(dmat = NULL)
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{dmat}{
-An object of class \code{\link{delmap.data}} which contains the genotype data in 0/1 form and has no missing genotypes.
+An object of class \code{\link{dmdata}} which contains the genotype data in 0/1 form and has no missing genotypes.
 }
 }
 \details{

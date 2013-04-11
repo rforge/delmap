@@ -37,7 +37,7 @@ d <- matrix(data=c(0,0,1,1,
                         0,1,0,0,  
                         1,1,1,0), nrow=5)
 # convert  into deldata.map  object
-dmap <- as.delmap(d)
+dmap <- as.dmdata(d)
 
 # calculate distance matrix for deletion data
 CreateDistMatrix(dmat=dmap)

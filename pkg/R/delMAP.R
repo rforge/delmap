@@ -44,7 +44,7 @@ Perturb <- function(x, u) {
 # Sort randomised columns when there are no missing
 # data values, could be combined into the Order function
 # but have kept it seperate for now
-# dmat :  delmap data
+# dmat :  dmdat
 # option: 1 for Manhattan dist, otherwise delmap dist
 # n: number of iterations (due to it being heuristic)
 #===================================================
@@ -77,7 +77,7 @@ Sort <- function(dmat = NULL, n = 1000)
         }
         lengths[i] <- l
     }
-    return(list(ord=as.delmap(ordbest), len=lengths))
+    return(list(ord=as.dmdata(ordbest), len=lengths))
 }
 
 
@@ -107,7 +107,7 @@ UniqueCols <- function(mat) {
    ## Internal function
    ## Purpose: to identify unique columns
    ##          Returns only unique columns and a list of those marker loci removed. 
-   ## mat:     a data matrix or delmap.data object
+   ## mat:     a data matrix or dmdata object
 
 
 
@@ -270,10 +270,10 @@ UniqueCols <- function(mat) {
       mis.indx <- mat.indx[ sample(1:nrow(mat.indx),
                             round(nrow(deldat)*ncol(deldat)*p.missing),replace=T),]
       mis.deldat[mis.indx] <- NA
-      class(mis.deldat) <- "delmap.data"
+      class(mis.deldat) <- "dmdata"
     }
 
-    class(deldat) <- "delmap.data"
+    class(deldat) <- "dmdata"
     ifelse( is.null(p.missing),
        res <- list(nomissing=deldat),
        res <- list(nomissing=deldat, missing=mis.deldat))
@@ -291,7 +291,7 @@ UniqueCols <- function(mat) {
     ##          the marker and line names
     ## Args:    dat  data frame 
     ##          datafile containing file name
-    ## Outputs:  data matrix of type "delmap.data" with abbreviated marker & line names
+    ## Outputs:  data matrix of type "dmdata" with abbreviated marker & line names
     ##           and recoded genotypes to be 1,0, NA
 
 
@@ -327,7 +327,7 @@ UniqueCols <- function(mat) {
   if(line.names) rownames(recoded.dat) <- rownames(dat)
 
   # new class of object where object contains matrix data with special attributes
-  class(recoded.dat) <- "delmap.data"
+  class(recoded.dat) <- "dmdata"
 
   return(recoded.dat)
   }  ## end function cleandata.ReadData
@@ -363,7 +363,7 @@ SimDeletions <- function(numlines=NULL, plines=0.5, nummarkers=NULL, labels=NULL
   ## p.missing  -  prob of a genotype being missing
   ## seed       -  a numeric value to initialize the pseudo-random number generator
   ##
-  ## Returns    -  returns two delmap.data objects, one with all the genotypes observed
+  ## Returns    -  returns two dmdata objects, one with all the genotypes observed
   ##               and the other with missing genotypes (if p.missing is not null). 
  
 
@@ -390,14 +390,14 @@ SimDeletions <- function(numlines=NULL, plines=0.5, nummarkers=NULL, labels=NULL
 
 }  ## end function  SimDeletions
 
-print.delmap.data <- function(x, ...)
+print.dmdata <- function(x, ...)
 {
   cat(" A summary of this object is: \n\n")
   cat(" The (recoded) deletion data are: \n")
   write.it(x)
   write.mrknames(x)
   write.linenames(x)
-} ## end function print.delmap.data
+} ## end function print.dmdata
 
 ReadData <- function(datafile, line.names=FALSE,na.strings="NA", marker.names=FALSE, csv=FALSE)
 {
@@ -417,7 +417,7 @@ ReadData <- function(datafile, line.names=FALSE,na.strings="NA", marker.names=FA
   ## read data from file
   dat <- read.data(file=datafile, header= marker.names, sep= fsep, na.strings=na.strings, row.names=col.number)
 
-  ## clean data (abbreviated marker & line names, of type delmap.data, and genotypes are
+  ## clean data (abbreviated marker & line names, of type dmdata, and genotypes are
   ##    0, 1, NA
   cleandata.ReadData(dat, datafile, marker.names, line.names)
 } ## end ReadData
@@ -427,16 +427,16 @@ ReadData <- function(datafile, line.names=FALSE,na.strings="NA", marker.names=FA
 CreateDistMatrix <- function(dmat=NULL)
 {
 ## Purpose:  Use Manhattan distance measure on marker loci (columns)
-## Args:     matrix or delmap.data object
+## Args:     matrix or dmdata object
 ## Return:   distance object for deletion data
 
-   if(is.delmap(dmat)){
+   if(is.dmdata(dmat)){
      class(dmat) <- "matrix"
    } else {
     if(is.matrix(dmat))
     {
-      dmat <- as.delmap(dmat)
-    } else stop(" Object must be of type matrix or delmap.data.")
+      dmat <- as.dmdata(dmat)
+    } else stop(" Object must be of type matrix or dmdata.")
    }
    if(any(is.na(dmat))) stop("NA values not allowed when calculating distances.")
 
@@ -454,8 +454,8 @@ CleanData <- function(dmat=NULL, ignoreNA=FALSE)
   ##            IF ignoreNA=FALSE, only rows without deletions and/or columns with no NA's and 
   ##            no deletions are removed. That is, a column is only removed if it carrys no deletions and has 
   ##            no NA's 
-    if (!is.delmap(dmat)) 
-        stop("Error! object not of class delmap.data")
+    if (!is.dmdata(dmat)) 
+        stop("Error! object not of class dmdata")
     indx <- which(is.na(dmat), arr.ind = TRUE)
 
 
@@ -473,7 +473,7 @@ CleanData <- function(dmat=NULL, ignoreNA=FALSE)
      if(length(indx) > 0) dmat <- dmat[,-indx]
     }     
 
-    class(dmat) <- "delmap.data"
+    class(dmat) <- "dmdata"
     dmat 
 
 }  ## CleanData
@@ -485,7 +485,7 @@ CleanData <- function(dmat=NULL, ignoreNA=FALSE)
 
 PermuteCols <- function(dmat=NULL)
 {
- if(class(dmat) != "delmap.data") stop("Error! object not of class delmap.data")
+ if(class(dmat) != "dmdata") stop("Error! object not of class dmdata")
 
   cl <- class(dmat)
   ## permute columns
@@ -512,7 +512,7 @@ IdentifyMarkerBlocks <- function(dmat = NULL)
 
 
   if(any(is.na(dmat))) stop("Error.  NA's not allowed.")
-  if(!is.delmap(dmat)) stop("Error.  Object must be of class delmap.data.")
+  if(!is.dmdata(dmat)) stop("Error.  Object must be of class dmdata.")
 
   marker.groupings <- rep(FALSE, ncol(dmat)-1)
   group.indx <- rep(NA, ncol(dmat))
@@ -560,7 +560,7 @@ IdentifyMarkerOrd <- function(dmat = NULL)
   ## Returns:  list where each element is a integer vector or possible orderings
 
 
-  if(!is.delmap(dmat)) stop("Error. Object must be of class delmap.data.")
+  if(!is.dmdata(dmat)) stop("Error. Object must be of class dmdata.")
 
 
   ## Order rows/lines based on deletion pattern
@@ -623,7 +623,7 @@ IdentifyMarkerOrd <- function(dmat = NULL)
 
 ImputeMissingGeno <- function(dmat=NULL,  uniform=TRUE)
 {
-   if(!is.delmap(dmat)) stop("Object must be of class delmap.data.")
+   if(!is.dmdata(dmat)) stop("Object must be of class dmdata.")
 
    indx <- which(is.na(dmat), arr.ind=TRUE)
    if(uniform)
@@ -669,7 +669,7 @@ ImputeMissingGeno <- function(dmat=NULL,  uniform=TRUE)
 
 
 
-plot.delmap.data <- function(x, main=NULL,...)
+plot.dmdata <- function(x, main=NULL,...)
 {
 
 
@@ -688,9 +688,9 @@ plot.delmap.data <- function(x, main=NULL,...)
     points(indx[, 2], indx[, 1], cex=1)
     indx <- which(x == 1, arr.ind = TRUE)
     points(indx[, 2], indx[, 1], pch = 19, cex=1)
-    t <- c(0, findInterval(unique(IdentifyMarkerBlocks(as.delmap(x))), IdentifyMarkerBlocks(as.delmap(x))))
+    t <- c(0, findInterval(unique(IdentifyMarkerBlocks(as.dmdata(x))), IdentifyMarkerBlocks(as.dmdata(x))))
     segments(x0 = t + 0.5, y0 = 0.5, y1 = max(dimr) + 0.5)
-    axis(1, (t[-length(t)] + t[-1])/2, sprintf("B%d", unique(IdentifyMarkerBlocks(as.delmap(x)))), 
+    axis(1, (t[-length(t)] + t[-1])/2, sprintf("B%d", unique(IdentifyMarkerBlocks(as.dmdata(x)))), 
         las = 3, tick = FALSE, mgp=c(0,0,0),cex.axis = 0.75)
 
 
@@ -718,11 +718,11 @@ plot.delmap.data <- function(x, main=NULL,...)
 #     }
 #   }
 
-} ## end function plot.delmap.data
+} ## end function plot.dmdata
 
-as.delmap.matrix <- function(x)
+as.dmdata.matrix <- function(x)
 {
-  # convert matrix object into delmap.data object.
+  # convert matrix object into dmdata object.
   # matrix is given generic marker and line names if col and row names are null.
   
   # checks
@@ -753,24 +753,24 @@ as.delmap.matrix <- function(x)
   if(is.null(rownames(x))) rownames(x)  <- paste("L", 1:nrow(x), sep="")
 
   # new class of object where object contains matrix data with special attributes
-  class(x) <- "delmap.data"
+  class(x) <- "dmdata"
   
   x
 }
 
-is.delmap <- function(dmat) inherits(dmat, "delmap.data")
+is.dmdata <- function(dmat) inherits(dmat, "dmdata")
 
-as.delmap <- function(x) 
-  UseMethod("as.delmap")
+as.dmdata <- function(x) 
+  UseMethod("as.dmdata")
 
 
-as.delmap.default <- function(x)
+as.dmdata.default <- function(x)
 {
-  if(is.delmap(x))
+  if(is.dmdata(x))
      x
   else
     {
-      stop(" Only objects of type matrix can be converted into delmap.data objects.")
+      stop(" Only objects of type matrix can be converted into dmdata objects.")
       NULL
     } 
 
@@ -783,7 +783,7 @@ as.delmap.default <- function(x)
 # if NA is 0 or 1.
 # Returns a list with the collapsed data and info on which
 # columns were collapsed
-# dmat: a delmap data object
+# dmat: a dmdata object
 #===================================================
 Collapse <- function(dmat=NULL) {
 
@@ -812,7 +812,7 @@ Collapse <- function(dmat=NULL) {
    # miss matrix
    ret <- cbind(uniq$mat, miss)
    ret <- ret[,names(sort(orig.ord[colnames(ret)]))]
-   class(ret) <- "delmap.data"
+   class(ret) <- "dmdata"
    return(list(data = ret, collapsed = uniq$cols))
 }
 
@@ -822,7 +822,7 @@ Collapse <- function(dmat=NULL) {
 # Function to find an approximately optimal ordering
 # according to Hamiltonion path length.
 #
-# dmat:   the delmap data
+# dmat:   the dmdata
 # n:      the no. of iterations to perform
 # option: 1 for Manhattan distance, otherwise, delmap
 # w:      the "window" to work with i.e how many values
@@ -830,8 +830,8 @@ Collapse <- function(dmat=NULL) {
 # T:      value of temperature
 #===================================================
 Order <- function(dmat=NULL, n=1000,  w=1, T=1000) {
-    if (class(dmat) != "delmap.data")
-        stop("Error! object not of class delmap.data")
+    if (class(dmat) != "dmdata")
+        stop("Error! object not of class dmdata")
 
     # Record original ordering in case we want it
     orig.ord <- 1:ncol(dmat)
@@ -925,7 +925,7 @@ Order <- function(dmat=NULL, n=1000,  w=1, T=1000) {
             ind.na$value <- sapply(FUN = function(x) Sbest[ind.na[[1]][x], ind.na[[2]][x]], 1:length(ind.na[[1]]))
 
             # Plot to get an idea of how things are going
-            plot(as.delmap(Sbestord), main=sprintf("Plot at iteration %d", i))
+            plot(as.dmdata(Sbestord), main=sprintf("Plot at iteration %d", i))
         }
 
         Sbestl.i[i] <- Sbestl
@@ -935,8 +935,8 @@ Order <- function(dmat=NULL, n=1000,  w=1, T=1000) {
         i <- i + 1
     }
 
-    class(Sbestc) <- "delmap.data"
-    class(Sbestord) <- "delmap.data"
+    class(Sbestc) <- "dmdata"
+    class(Sbestord) <- "dmdata"
 
     plot(Sbestord, main="Final Plot")
 
@@ -949,7 +949,7 @@ Order <- function(dmat=NULL, n=1000,  w=1, T=1000) {
 #DeletionMappingOLD <- function(dmap=NULL, niterates=100, nwithin=100,temp=1000, psampled=0.1, method="concorde",...)
 #{
 #
-#    if(!is.delmap(dmap)) stop("Object must be of class delmap.data.")
+#    if(!is.dmdata(dmap)) stop("Object must be of class dmdata.")
 #   
 #    ##-----------------------------##
 #    ##  Initialization             ##
@@ -978,7 +978,7 @@ Order <- function(dmat=NULL, n=1000,  w=1, T=1000) {
 #         # form new realization from old dmap 
 #         ndmap <- odmap  # new dmap
 #         ndmap[matrix(i.missing[rindx,],ncol=2,byrow=FALSE) ] <- nvals 
-#         class(ndmap) <- "delmap.data"
+#         class(ndmap) <- "dmdata"
 #
 #       # find best ordering of new realization and its touring length
 #        D <- CreateDistMatrix(ndmap)
@@ -999,7 +999,7 @@ Order <- function(dmat=NULL, n=1000,  w=1, T=1000) {
 #         i.missing[,2] <- lookuptab$new[indx]
 #
 #         ndmap <- odmap[,n.order]
-#         class(ndmap) <- "delmap.data"
+#         class(ndmap) <- "dmdata"
 #         odmap <- ndmap
 #         o.order <- n.order
 #         otlength <- ntlength
@@ -1050,7 +1050,7 @@ iDeletionMapping <- function(dmap,  psampled, odmap, temp, method, otlength, bes
         # rearrange dmap to be new order
          dmap <- dmap[, n.order]  # reorder data with missing data
          ndmap <- ndmap[,n.order] # reorder  newly imputed data
-         class(dmap) <- class(ndmap) <- "delmap.data"
+         class(dmap) <- class(ndmap) <- "dmdata"
 
          odmap <- ndmap  # assign newly imputed data to current data
          otlength <- ntlength
@@ -1084,7 +1084,7 @@ iDeletionMapping <- function(dmap,  psampled, odmap, temp, method, otlength, bes
 DeletionMapping <- function(dmap=NULL, niterates=100, nwithin=100,cooling=0.99 , psampled=0.1, 
                             method="concorde", blockstr=NULL, mrkord=NULL, ...)
 {
-    if(!is.delmap(dmap)) stop("Object must be of class delmap.data.")
+    if(!is.dmdata(dmap)) stop("Object must be of class dmdata.")
     if( cooling < 0 | cooling > 1) stop(" Cooling constant must be between 0 and 1")
 
 
@@ -1097,7 +1097,7 @@ DeletionMapping <- function(dmap=NULL, niterates=100, nwithin=100,cooling=0.99 ,
     n <- colnames(dmap)
     dmap <- cbind(dmap, rep(0, nrow(dmap)))
     colnames(dmap) <- c(n , "cut")
-    class(dmap) <- "delmap.data"
+    class(dmap) <- "dmdata"
 
     odmap <- ImputeMissingGeno(dmap)
     bestmap <- odmap
@@ -1140,7 +1140,7 @@ DeletionMapping <- function(dmap=NULL, niterates=100, nwithin=100,cooling=0.99 ,
         # rearrange dmap to be new order
          dmap <- dmap[, n.order]  # reorder data with missing data
          ndmap <- ndmap[,n.order] # reorder  newly imputed data
-         class(dmap) <- class(ndmap) <- "delmap.data"
+         class(dmap) <- class(ndmap) <- "dmdata"
 
          odmap <- ndmap  # assign newly imputed data to current data
          otlength <- ntlength
@@ -1188,7 +1188,7 @@ dc <- CleanData(d[["missing"]])
 ## obtain true blocking structure
 mrks <- colnames(dc)
 cindx <- match(mrks, colnames(d[["nomissing"]]))
-dn <- as.delmap(d[["nomissing"]][,cindx])
+dn <- as.dmdata(d[["nomissing"]][,cindx])
 trueblockstr <- IdentifyMarkerBlocks(dn)
 truemrkord   <- IdentifyMarkerOrd(dn)$orders
 

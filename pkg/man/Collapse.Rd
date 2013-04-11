@@ -12,7 +12,7 @@ Collapse(dmat= NULL)
 }
 \arguments{
   \item{dmat}{
-An object of class \code{\link{delmap.data}}
+An object of class \code{\link{dmdata}}
 }
 }
 \details{
@@ -21,7 +21,7 @@ genotypes will not be collapsed.
 }
 \value{
 A list is returned, containing two elements; data and collapsed. The \code{data} element contains the collapsed data 
-and is of type \code{\link{delmap.data}}. The \code{collapsed} element is a list of length the number of groups 
+and is of type \code{\link{dmdata}}. The \code{collapsed} element is a list of length the number of groups 
 of marker loci that have been collapsed into a single marker locus. Each element in the list is indexed by the 
 unique marker locus upon which the redundant marker loci have been collapsed.  
 }

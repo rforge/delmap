@@ -1,19 +1,19 @@
 export (
-       as.delmap, 
+       as.dmdata, 
        CleanData, 
        Collapse,
        DeletionMapping,
        IdentifyMarkerBlocks,
        ImputeMissingGeno,
-       is.delmap,
+       is.dmdata,
        SimDeletions,
        CreateDistMatrix,
        IdentifyMarkerOrd,
        PermuteCols,   
        ReadData,
        RearrangeDist)
-S3method(as.delmap, matrix)
-S3method(print, delmap.data)
-S3method(plot, delmap.data)
+S3method(as.dmdata, matrix)
+S3method(print, dmdata)
+S3method(plot, dmdata)
 importFrom(fields, two.colors)
 import(seriation, TSP)

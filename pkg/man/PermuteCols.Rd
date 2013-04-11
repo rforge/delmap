@@ -13,14 +13,14 @@ PermuteCols(dmat= NULL)
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{dmat}{
-An object of class \code{\link{delmap.data}}
+An object of class \code{\link{dmdata}}
 }
 }
 \details{
 \code{PermuteCols} permutes, randomly, the order of the columns of genotype data.
 }
 \value{
-An object of class \code{\link{delmap.data}}.
+An object of class \code{\link{dmdata}}.
 }
 \author{
 Andrew W George

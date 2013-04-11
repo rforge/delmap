@@ -12,7 +12,7 @@ ImputeMissingGeno(dmat = NULL, uniform=TRUE)
 }
 \arguments{
   \item{dmat}{
-An object of class \code{\link{delmap.data}} which contains the genotype data in 0/1 form and any 
+An object of class \code{\link{dmdata}} which contains the genotype data in 0/1 form and any 
 missing marker genotypes.
 }
     \item{uniform}{
@@ -31,7 +31,7 @@ If one of the flanking genotypes is 1, then the missing genotype is assigned 0 w
 If the flanking genotypes are both 1, then the missing genotype is assigned 0 with probability 0.05. 
 }
 \value{
-An object of class \code{\link{delmap.data}} is returned that has the missing genotyeps imputed. 
+An object of class \code{\link{dmdata}} is returned that has the missing genotyeps imputed. 
 }
 \author{
 Andrew W. George
