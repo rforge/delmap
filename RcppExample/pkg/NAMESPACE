@@ -1,0 +1,21 @@
+useDynLib(delmap)
+export (
+       iDeletionMapping,
+       as.delmap, 
+       CleanData, 
+       Collapse,
+       DeletionMapping,
+       IdentifyMarkerBlocks,
+       ImputeMissingGeno,
+       is.delmap,
+       SimDeletions,
+       CreateDistMatrix,
+       IdentifyMarkerOrd,
+       PermuteCols,   
+       ReadData,
+       RearrangeDist)
+S3method(as.delmap, matrix)
+S3method(print, delmap.data)
+S3method(plot, delmap.data)
+importFrom(fields, two.colors)
+import(seriation, TSP)
