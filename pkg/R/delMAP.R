@@ -271,9 +271,11 @@ UniqueCols <- function(mat) {
                             round(nrow(deldat)*ncol(deldat)*p.missing),replace=T),]
       mis.deldat[mis.indx] <- NA
       class(mis.deldat) <- "dmdata"
+      attr(mis.deldat, "imputed") <- NA
     }
 
     class(deldat) <- "dmdata"
+    attr(deldat, "imputed") <- NA
     ifelse( is.null(p.missing),
        res <- list(nomissing=deldat),
        res <- list(nomissing=deldat, missing=mis.deldat))
@@ -335,6 +337,61 @@ UniqueCols <- function(mat) {
 
 
 
+#===================================================
+# Calculates the L1 distance for a single symbol
+# x: the symbol locations for the text string
+# y: the symbol locations for the pattern string
+#===================================================
+l1Dist.single <- function(x, y) {
+    sum(abs(x-y))
+}
+
+#===================================================
+# Calculates the L1 distance of two strings
+# Refer to Chapter 2 of pattern matching paper.
+# x: the text string (resultant order from algorithm)
+# y: the pattern string (known true ordering)
+# i: attempt to account for strings of differing lengths
+#===================================================
+l1Dist <- function(x, y, i=1) {
+
+    cost1 <- 0
+    cost2 <- 0
+
+    if(length(x) == length(y)) {
+
+        # Extract index locations for each seperate symbol
+        phix <- lapply(sort(unique(x)), function(k) which(x==k))
+        phiy <- lapply(sort(unique(y)), function(k) which(y==k))
+        phiz <- lapply(sort(unique(y)), function(k) which(rev(y)==k))
+
+        # Calculate cost for both y and rev(y) i.e. z
+        cost1 <- sum(sapply(1:length(phix), function(i) l1Dist.single(phix[[i]],phiy[[i]])))
+        cost2 <- sum(sapply(1:length(phix), function(i) l1Dist.single(phix[[i]],phiz[[i]])))
+    }
+
+    # For what this is attempting to do: refer to 3.2 in "Pattern Matching
+    # with address errors: rearrangement distances" The Case of Text and Pattern
+    # of Different Sizes. Doesn't quite work how I want it to.
+    else {
+
+        # Extract index locations for each seperate symbol, but only
+        # for the symbols that are in both strings
+        phix <- lapply(sort(unique(x)), function(k) which(x==k))
+        phiy <- lapply(sort(unique(x)), function(k) which(y[y%in%x]==k))
+        phiz <- lapply(sort(unique(x)), function(k) which(rev(y[y%in%x])==k))
+        
+        
+        y.i <- which(y==(y[y%in%x]))
+        z.i <- which(rev(y)==(rev(y)[rev(y)%in%x]))
+
+        # Calc distance for single symbol, but adjust the position index by i
+        cost1 <- sum(sapply(1:length(phix), function(k) l1Dist.single(phix[[k]]+i-1,phiy[[k]]+y.i[1]-1)))
+        cost2 <- sum(sapply(1:length(phix), function(k) l1Dist.single(phix[[k]]+i-i,phiz[[k]]+z.i[1]-1)))
+    }
+    return(min(cost1,cost2))
+}
+
 
 
 ####----------------------------------##
@@ -384,7 +441,7 @@ SimDeletions <- function(numlines=NULL, plines=0.5, nummarkers=NULL, labels=NULL
   res <- step1.simulation(numlines, plines)
 
   deldat <- with(res, step23.simulation(rnumlines, Enumdel, numlines, nummarkers, chosen.lines, deldat ))
-
+   
   
    return(add.missing.deldat(p.missing, deldat))
 
@@ -398,6 +455,18 @@ print.dmdata <- function(x, ...)
   write.mrknames(x)
   write.linenames(x)
 } ## end function print.dmdata
+
+
+print.dmdist <- function(x, ...)
+{
+ cat(" Multivariate Distance Measure: \n\n")
+ cat( " No. of blocks         No. of blocks   Total minimum       Number wrongly  \n")
+ cat( " from reference        from observed   rearrangement dist  plcaed markers  \n")
+ cat( "-------------------------------------------------------------------------  \n")
+ cat( "      ",x[[1]], "                   ", x[[2]], "              ", x[[3]], "                ", x[[4]], "\n\n")
+
+} ## end function 
+
 
 ReadData <- function(datafile, line.names=FALSE,na.strings="NA", marker.names=FALSE, csv=FALSE)
 {
@@ -446,7 +515,7 @@ CreateDistMatrix <- function(dmat=NULL)
 } ## end function CreateDistMatrix
 
 
-CleanData <- function(dmat=NULL, ignoreNA=FALSE)
+CleanData <- function(dmap=NULL, ignoreNA=FALSE)
 {
   ## Purpose:   CleanData 
   ##            Removing of noninformative rows/columns.
@@ -454,27 +523,30 @@ CleanData <- function(dmat=NULL, ignoreNA=FALSE)
   ##            IF ignoreNA=FALSE, only rows without deletions and/or columns with no NA's and 
   ##            no deletions are removed. That is, a column is only removed if it carrys no deletions and has 
   ##            no NA's 
-    if (!is.dmdata(dmat)) 
+    if (!is.dmdata(dmap)) 
         stop("Error! object not of class dmdata")
-    indx <- which(is.na(dmat), arr.ind = TRUE)
+    indx <- which(is.na(dmap), arr.ind = TRUE)
 
+    arr.ind <- attr(dmap, "imputed")
 
     if(ignoreNA)
     { ## ignoring NA's 
-     indx <- which(rowSums(dmat, na.rm=TRUE) == 0) 
-     if(length(indx) > 0) dmat <- dmat[-indx,]
-     indx <- which(colSums(dmat, na.rm=TRUE)==0)
-     if(length(indx) > 0) dmat <- dmat[, -indx]
+     indx <- which(rowSums(dmap, na.rm=TRUE) == 0) 
+     if(length(indx) > 0) dmap <- dmap[-indx,]
+     indx <- which(colSums(dmap, na.rm=TRUE)==0)
+     if(length(indx) > 0) dmap <- dmap[, -indx]
     }  else {
       ## taking NA's into account in the count
-     indx <- which(rowSums(dmat, na.rm=TRUE) == 0 )
-     if(length(indx) > 0) dmat <- dmat[-indx,]
-     indx <- which(colSums(dmat, na.rm=TRUE) == 0 & colSums(is.na(dmat)) ==0)
-     if(length(indx) > 0) dmat <- dmat[,-indx]
+     indx <- which(rowSums(dmap, na.rm=TRUE) == 0 )
+     if(length(indx) > 0) dmap <- dmap[-indx,]
+     indx <- which(colSums(dmap, na.rm=TRUE) == 0 & colSums(is.na(dmap)) ==0)
+     if(length(indx) > 0) dmap <- dmap[,-indx]
     }     
 
-    class(dmat) <- "dmdata"
-    dmat 
+    class(dmap) <- "dmdata"
+    attr(dmap, "imputed") <- arr.ind
+
+    dmap 
 
 }  ## CleanData
 
@@ -492,6 +564,7 @@ PermuteCols <- function(dmat=NULL)
   indx <- sample(1:ncol(dmat), ncol(dmat), replace=F)
   a <- dmat[, indx]
   class(a) <- cl
+  attr(a, "imputed") <- NA
   a
 }
 
@@ -626,6 +699,7 @@ ImputeMissingGeno <- function(dmat=NULL,  uniform=TRUE)
    if(!is.dmdata(dmat)) stop("Object must be of class dmdata.")
 
    indx <- which(is.na(dmat), arr.ind=TRUE)
+   attr(dmat, "imputed") <- indx  ## location in dmat of imputed data
    if(uniform)
       dmat[indx] <- sample(unique(dmat)[!is.na(unique(dmat))], nrow(indx), replace=T)
 
@@ -665,14 +739,69 @@ ImputeMissingGeno <- function(dmat=NULL,  uniform=TRUE)
 
 
 
+colourplot <- function(dmap, main=NULL,...)
+{
+    ## produces a colour deletion mapping plot where like markers have the 
+    ## same colour and missing obs are colored differently. 
+
+    class(dmap) <- "matrix"
+    dimc <- ncol(dmap)
+    dimr <- nrow(dmap)
+    plot(dmap, xlim = c(1, dimc), ylim = rev(c(1, dimr)), xlab = "", 
+        ylab = "", type = "n", axes = FALSE, frame = TRUE, bty="n", oma=c(1,1,1,1))
+    if (!is.null(main)) 
+        title(main = main, line = 3)
+
+    ## assign a unique colour only if marker order index is unique
+    a <- IdentifyMarkerOrd(as.dmdata(dmap)) ## list with blocks and orders
+    # assigning a unique index based on assumption that there will never be more than
+    # 10000 blocks 
+    offset <- 10000 * a$blocks
+    mrkord <- offset + unlist(a$orders)
+    # assign a colour to each mrk order but only a new colour if mrkord changes in value
+    colourindx <- (as.integer(as.factor(mrkord)) %% 3)  + 1
+    colpallet <- c("red","grey","black")
+    colmarkers <-   colpallet[colourindx]
+
+
+    axis(3, 1:dimc, labels=FALSE, cex.axis = 0.5, las = 3, mgp=c(0,1,0))
+    at = 1:dimc
+    mtext(side = 3, text = dimnames(dmap)[[2]], at = at, col = colmarkers, line = 1, cex=0.5, 
+          las = 2)  ## axis for markers
+    axis(2, 1:dimr, dimnames(dmap)[[1]], cex.axis = 0.5, las = 1, mgp=c(0,0.5,-0.5))
+    segments(x0 = 0.5:(dimc + 0.5), y0 = 0.5, y1 = max(dimr) + 0.5, col="grey")
+    segments(x0 = 0.5, y0 = 0.5:(dimr + 0.5), x1 = max(dimc) + 0.5, col="grey")
+    indx <- which(is.na(dmap), arr.ind = TRUE)
+    points(indx[, 2], indx[, 1], cex=1)
+    indx <- which(dmap == 1, arr.ind = TRUE)
+    points(indx[, 2], indx[, 1], pch = 19, cex=1)
+    t <- c(0, findInterval(unique(IdentifyMarkerBlocks(as.dmdata(dmap))), IdentifyMarkerBlocks(as.dmdata(dmap))))
+    segments(x0 = t + 0.5, y0 = 0.5, y1 = max(dimr) + 0.5)
+    axis(1, (t[-length(t)] + t[-1])/2, sprintf("B%d", unique(IdentifyMarkerBlocks(as.dmdata(dmap)))), 
+        las = 3, tick = FALSE, mgp=c(0,0,0),cex.axis = 0.75)
+
+
+    ## add missing data
+    indxNA <- attr(dmap, "imputed")
+    if(!is.na(indxNA))
+    {
+     indxNA.deletion <- indxNA[dmap[indxNA] == 1,]
+     indxNA.nodeletion <- indxNA[dmap[indxNA] == 0,]
+    if(length(indxNA.deletion) > 0)   points(indxNA.deletion[,2], indxNA.deletion[,1], col="blue", pch=19, cex=1)
+    if(length(indxNA.nodeletion) > 0) points(indxNA.nodeletion[,2], indxNA.nodeletion[,1], col="blue", pch=15, cex=1)
+    } ## end if
+
+
+
+} ## end function plot.dmdata
+
+
 
 
 
 
 plot.dmdata <- function(x, main=NULL,...)
 {
-
-
     class(x) <- "matrix"
     dimc <- ncol(x)
     dimr <- nrow(x)
@@ -680,45 +809,87 @@ plot.dmdata <- function(x, main=NULL,...)
         ylab = "", type = "n", axes = FALSE, frame = TRUE, bty="n", oma=c(1,1,1,1))
     if (!is.null(main)) 
         title(main = main, line = 3)
-    axis(3, 1:dimc, dimnames(x)[[2]], cex.axis = 0.5, las = 3, mgp=c(0,1,0))
-    axis(2, 1:dimr, dimnames(x)[[1]], cex.axis = 0.5, las = 1, mgp=c(0,0.5,-0.5))
-    segments(x0 = 0.5:(dimc + 0.5), y0 = 0.5, y1 = max(dimr) + 0.5, col="grey")
-    segments(x0 = 0.5, y0 = 0.5:(dimr + 0.5), x1 = max(dimc) + 0.5, col="grey")
-    indx <- which(is.na(x), arr.ind = TRUE)
-    points(indx[, 2], indx[, 1], cex=1)
-    indx <- which(x == 1, arr.ind = TRUE)
-    points(indx[, 2], indx[, 1], pch = 19, cex=1)
-    t <- c(0, findInterval(unique(IdentifyMarkerBlocks(as.dmdata(x))), IdentifyMarkerBlocks(as.dmdata(x))))
-    segments(x0 = t + 0.5, y0 = 0.5, y1 = max(dimr) + 0.5)
-    axis(1, (t[-length(t)] + t[-1])/2, sprintf("B%d", unique(IdentifyMarkerBlocks(as.dmdata(x)))), 
-        las = 3, tick = FALSE, mgp=c(0,0,0),cex.axis = 0.75)
+
+    if(any(is.na(x)))
+    { # if data contains any NA's then printed as black/white plot with no block structure
+        axis(3, 1:dimc, dimnames(x)[[2]], cex.axis = 0.5, las = 3, mgp=c(0,1,0))
+        axis(2, 1:dimr, dimnames(x)[[1]], cex.axis = 0.5, las = 1, mgp=c(0,0.5,-0.5))
+        segments(x0 = 0.5:(dimc + 0.5), y0 = 0.5, y1 = max(dimr) + 0.5, col="grey")
+        segments(x0 = 0.5, y0 = 0.5:(dimr + 0.5), x1 = max(dimc) + 0.5, col="grey")
+        indx <- which(is.na(x), arr.ind = TRUE)
+        points(indx[, 2], indx[, 1], cex=1)
+        indx <- which(x == 1, arr.ind = TRUE)
+        points(indx[, 2], indx[, 1], pch = 19, cex=1)
+    }  else {
+        ## produces a colour deletion mapping plot where like markers have the 
+        ## same colour and missing obs are colored differently. 
+
+        ## assign a unique colour only if marker order index is unique
+        a <- IdentifyMarkerOrd(as.dmdata(x)) ## list with blocks and orders
+        # assigning a unique index based on assumption that there will never be more than
+        # 10000 blocks 
+        offset <- 10000 * a$blocks
+        mrkord <- offset + unlist(a$orders)
+        # assign a colour to each mrk order but only a new colour if mrkord changes in value
+        colourindx <- (as.integer(as.factor(mrkord)) %% 3)  + 1
+        colpallet <- c("red","grey","black")
+        colmarkers <-   colpallet[colourindx]
 
 
+        axis(3, 1:dimc, labels=FALSE, cex.axis = 0.5, las = 3, mgp=c(0,1,0))
+        at = 1:dimc
+        mtext(side = 3, text = dimnames(x)[[2]], at = at, col = colmarkers, line = 1, cex=0.5,
+              las = 2)  ## axis for markers
+        axis(2, 1:dimr, dimnames(x)[[1]], cex.axis = 0.5, las = 1, mgp=c(0,0.5,-0.5))
+        segments(x0 = 0.5:(dimc + 0.5), y0 = 0.5, y1 = max(dimr) + 0.5, col="grey")
+        segments(x0 = 0.5, y0 = 0.5:(dimr + 0.5), x1 = max(dimc) + 0.5, col="grey")
+        indx <- which(is.na(x), arr.ind = TRUE)
+        points(indx[, 2], indx[, 1], cex=1)
+        indx <- which(x == 1, arr.ind = TRUE)
+        points(indx[, 2], indx[, 1], pch = 19, cex=1)
+        t <- c(0, findInterval(unique(IdentifyMarkerBlocks(as.dmdata(x))), IdentifyMarkerBlocks(as.dmdata(x))))
+        segments(x0 = t + 0.5, y0 = 0.5, y1 = max(dimr) + 0.5)
+        axis(1, (t[-length(t)] + t[-1])/2, sprintf("B%d", unique(IdentifyMarkerBlocks(as.dmdata(x)))),
+            las = 3, tick = FALSE, mgp=c(0,0,0),cex.axis = 0.75)
 
-#    class(x) <- "matrix"    
-#    dimc <- ncol(x)
-#    dimr <- nrow(x)
-#    plot(x, xlim=c(1,dimc), ylim=rev(c(1,dimr)), xlab="", ylab="", type="n", axes=FALSE, frame=TRUE)
-#    if(!is.null(main)) title(main=main, line=3)
-#    axis(3, 1:dimc, dimnames(x)[[2]], cex.axis = 0.7, las=3)
-#    axis(2, 1:dimr, dimnames(x)[[1]], cex.axis = 0.7, las=1)
-#    # set grid lines
-#    abline(v=0.5:(dimc+0.5), col="grey")
-#    abline(h=0.5:(dimr+0.5), col="grey")
-#    # add data
-#    indx <- which(is.na(x), arr.ind=TRUE)
-#    points(indx[,2], indx[,1])
-#    indx <- which(x==1, arr.ind=TRUE)
-#    points(indx[,2], indx[,1], pch=19)
-#    # determine and plot blocks
-#    t <- c(0, findInterval(unique(IdentifyMarkerBlocks(x)),IdentifyMarkerBlocks(x)))
-#    abline(v=t+0.5)
-#    axis(1, (t[-length(t)]+t[-1])/2, sprintf("B%d", unique(IdentifyMarkerBlocks(x))), las=3, tick=FALSE)
+        ## add missing data
+        indxNA <- attr(x, "imputed")
+        if(!is.na(indxNA))
+        {
+         indxNA.deletion <- indxNA[x[indxNA] == 1,]
+         indxNA.nodeletion <- indxNA[x[indxNA] == 0,]
+        if(length(indxNA.deletion) > 0)   points(indxNA.deletion[,2], indxNA.deletion[,1], col="blue", pch=19, cex=1)
+        if(length(indxNA.nodeletion) > 0) points(indxNA.nodeletion[,2], indxNA.nodeletion[,1], col="blue", pch=15, cex=1)
+        } ## end if
+    }  ## end if else
 
-#     }
-#   }
+
 
 } ## end function plot.dmdata
+
+
+
+
+
+
+
+
+
+as.dmdist.list <- function(x)
+{
+# convert list object into dmdist object. 
+# list object must have four elements
+# checks
+  if(length(x) != 4) stop("List is of incorrect length. Must be of length 4")
+  if(!(is.numeric(x[[1]]) & is.numeric(x[[2]]) & is.numeric(x[[3]]) & is.numeric(x[[4]])))  
+          stop("Elements of list must be numeric")
+
+   res <- list("nrefblocks"=x[[1]], "nobsblocks"=x[[2]], "mindist"=x[[3]], "minwrong"=x[[4]])
+   class(res) <- "dmdist"
+   res
+}
+
+
 
 as.dmdata.matrix <- function(x)
 {
@@ -752,13 +923,19 @@ as.dmdata.matrix <- function(x)
   ## abbreviate line names
   if(is.null(rownames(x))) rownames(x)  <- paste("L", 1:nrow(x), sep="")
 
+
+  ## add additional attribute for row,column location of imputed genotypes 
+  ## which is null at the moment.
+  attr(x,"imputed") <- NA
+
   # new class of object where object contains matrix data with special attributes
   class(x) <- "dmdata"
   
   x
 }
 
-is.dmdata <- function(dmat) inherits(dmat, "dmdata")
+is.dmdata <- function(dmat) 
+  inherits(dmat, "dmdata")
 
 as.dmdata <- function(x) 
   UseMethod("as.dmdata")
@@ -775,6 +952,27 @@ as.dmdata.default <- function(x)
     } 
 
 }
+
+is.dmdist <- function(y) 
+   inherits(y, "dmdist")
+
+as.dmdist <- function(x) 
+   UseMethod("as.dmdist")
+
+as.dmdist.default <- function(x)
+{
+ if(is.dmdist(x))
+    x
+ else
+    {
+    stop(" Object not of list type to be converted into a dmdist object.")
+    NULL
+    }
+}  ## end function
+
+
+
+
 
 #===================================================
 # Function to collapse like markers into one
@@ -818,271 +1016,9 @@ Collapse <- function(dmat=NULL) {
 
 
 
-#===================================================
-# Function to find an approximately optimal ordering
-# according to Hamiltonion path length.
-#
-# dmat:   the dmdata
-# n:      the no. of iterations to perform
-# option: 1 for Manhattan distance, otherwise, delmap
-# w:      the "window" to work with i.e how many values
-#         change during each iteration
-# T:      value of temperature
-#===================================================
-Order <- function(dmat=NULL, n=1000,  w=1, T=1000) {
-    if (class(dmat) != "dmdata")
-        stop("Error! object not of class dmdata")
-
-    # Record original ordering in case we want it
-    orig.ord <- 1:ncol(dmat)
-    names(orig.ord) <- colnames(dmat)
-
-    # identify missing values
-    indx <- which(is.na(dmat[,]), arr.ind=TRUE)
-
-    # If no missing values just use sort
-    if(length(indx) < 1) {
-        print("No missing values! Used Sort() instead.") 
-        res <- Sort(dmat)
-        return(res)
-    }
-    
-    # used to store locations of missing values          
-    ind.na <- list(row=rownames(dmat)[indx[,1]], col=colnames(dmat)[indx[,2]], value=dmat[indx])
-
-    # Set initial configuration and store
-    S <- ImputeMissingGeno(dmat)
-    Sc <- CleanData(S)
-    Sd <- CreateDistMatrix(Sc)
-    Sl <- criterion(Sd, method="Path_length")[1]
-    So <- seriate(Sd, method="TSP", control=list(method="2-opt"))
-    Sord <- Sc[,get_order(So)]
-
-    # Stores the imputed values of missing data
-    bestvals <- sapply(FUN = function(x) S[ind.na[[1]][x], ind.na[[2]][x]], 1:length(ind.na[[1]]))
-    ind.na$value <- bestvals
-
-    # Set arbitrarily as best current ordering
-    Sbest <- S
-    Sbestc <- Sc
-    Sbestd <- Sd
-    Sbestl <- Sl
-    Sbesto <- So
-    Sbestord <- Sord
-
-    # Used to store new length, accepted lengths and best length at each iteration
-    lengths <- rep(NA,n)
-    lengths.a <- rep(NA,n)
-    Sbestl.i <- rep(NA, n)
-
-    # Iterate through algorithm n times
-    for(i in 1:n) {
-
-        # determine neighbour to investigate
-        currvals <- sapply(FUN = function(x) S[ind.na[[1]][x], ind.na[[2]][x]], 1:length(ind.na[[1]]))
-        u <- sample(length(currvals), size=w, replace=FALSE)
-
-        # Move to neighbour in configuration space
-        newvals <- Perturb(currvals, u)
-        Snew <- S
-        for(k in 1:length(u)) {
-            Snew[ind.na[[1]][u[k]], ind.na[[2]][u[k]]] <- newvals[u[k]]
-        }
-
-        # calculate "energy" for neighbour
-        Snewc <- CleanData(Snew)
-        Snewd <- CreateDistMatrix(Snewc)
-        Snewo <- seriate(Snewd, method="TSP", control=list(method="2-opt"))
-        Sneword <- Snewc[,get_order(Snewo)]
-        Snewdord <- CreateDistMatrix(Sneword)
-        Snewl <- criterion(Snewdord, method="Path_length")[1]
-        lengths[i] <- Snewl
-
-        # Make the comparisons and accept new
-        # configuration with probability P(Sl, Snewl, T).
-        v <- runif(1,0,1)
-        if(exp((Sl - Snewl)/T) > v) {
-            S <- Snew
-            Sc <- Snewc
-            Sd <- Snewd
-            Sl <- Snewl
-            So <- Snewo
-            Sord <- Sneword
-            lengths.a[i] <- Snewl
-        }
-        else
-            lengths.a[i] <- 0
-
-        # If new configuration is better than current
-        # best, save as new best configuration.
-        if(Snewl < Sbestl) {
-            Sbest <- Snew
-            Sbestc <- Snewc
-            Sbestd <- Snewd
-            Sbestl <- Snewl
-            Sbesto <- Snewo
-            Sbestord <- Sneword
-            ind.na$value <- sapply(FUN = function(x) Sbest[ind.na[[1]][x], ind.na[[2]][x]], 1:length(ind.na[[1]]))
-
-            # Plot to get an idea of how things are going
-            plot(as.dmdata(Sbestord), main=sprintf("Plot at iteration %d", i))
-        }
-
-        Sbestl.i[i] <- Sbestl
-
-        # Update parameters
-        T <- T*0.99
-        i <- i + 1
-    }
-
-    class(Sbestc) <- "dmdata"
-    class(Sbestord) <- "dmdata"
-
-    plot(Sbestord, main="Final Plot")
-
-    # Return the unordered and ordered data along with lengths and best lengths
-    list(unord=Sbestc[,intersect(names(orig.ord), names(get_order(Sbesto)))], 
-         res=Sbestord, ord=Sbesto, index=ind.na, lengths=lengths, acc=lengths.a, best=Sbestl.i)
-}
-
-
-#DeletionMappingOLD <- function(dmap=NULL, niterates=100, nwithin=100,temp=1000, psampled=0.1, method="concorde",...)
-#{
-#
-#    if(!is.dmdata(dmap)) stop("Object must be of class dmdata.")
-#   
-#    ##-----------------------------##
-#    ##  Initialization             ##
-#    ##-----------------------------##
-#    dmap <- CleanData(dmap, ignoreNA=FALSE)
-#    odmap <- ImputeMissingGeno(dmap)
-#    o.order <- 1:ncol(dmap)
-#    names(o.order) <- colnames(dmap)
-#    i.missing <- which(is.na(dmap), arr.ind=TRUE)  # index of missing values
-#    v.missing <- odmap[i.missing]                  # values assigned to missing
-#    otlength <- 100000   # tour length set to arbritarily larger value to ensure not accepted
-#
-#    bestmap <- odmap
-#    besttlength <- otlength
-#
-#
-#    for (ii in 1:niterates)
-#    {
-#       
-#      for(jj in 1:nwithin)
-#      {
-#       # create new realization
-#         # identify missing values to replace with new sampled values
-#         rindx <- sample(1:nrow(i.missing), round(nrow(i.missing)*psampled), replace=FALSE)
-#         nvals <- sample(unique(dmap[!is.na(dmap)]),length(rindx), replace=TRUE)
-#         # form new realization from old dmap 
-#         ndmap <- odmap  # new dmap
-#         ndmap[matrix(i.missing[rindx,],ncol=2,byrow=FALSE) ] <- nvals 
-#         class(ndmap) <- "dmdata"
-#
-#       # find best ordering of new realization and its touring length
-#        D <- CreateDistMatrix(ndmap)
-#        tD <- as.TSP(D)  # in TSP format
-#        tD <- insert_dummy(tD, label="cut")  # adding extra dummy city
-#        solu   <- solve_TSP(tD, method=method)
-#        ntlength <- attr(solu, "tour_length")
-#        n.order <- cut_tour(solu, "cut")  # new marker ordering
-#
-#       # test if we should move to new realization
-#       rnd <- runif(1,0,1)
-#       MHprob <- exp( -1*(ntlength-otlength)/temp)
-#       if (MHprob >= 1 | rnd < MHprob)
-#       { # accept new realization
-#         # trick part - need to rearrange i.missing and v.missing to reflect to column ordering
-#         lookuptab <- data.frame(old=1:ncol(odmap), new=n.order)
-#         indx <- with(lookuptab, match( i.missing[,2], old))         
-#         i.missing[,2] <- lookuptab$new[indx]
-#
-#         ndmap <- odmap[,n.order]
-#         class(ndmap) <- "dmdata"
-#         odmap <- ndmap
-#         o.order <- n.order
-#         otlength <- ntlength
-#    
-#         #keep track of best realization
-#         if(ntlength < besttlength)
-#         {
-#           bestmap <- ndmap
-#           besttlength <- ntlength
-#         }
-#
-#       } # end if 
-#      } # end for jj nwithin 
-#       # geometric update temperature
-#       temp <- 0.95 * temp
-#
-#     #  plot(bestmap)
-#      } # end for ii niterates
-#         list(dmap=bestmap, tlength=besttlength)
-#}  # end function
-
-iDeletionMapping <- function(dmap,  psampled, odmap, temp, method, otlength, besttlength, bestmap, blockstr, mrkord, bestdist)
-{
-       # impute missing marker genotypes
-       ndmap <- ImputeMissingGeno(dmat=dmap, uniform=FALSE)
-
-
-       # find best ordering of new realization and its touring length
-       D <- CreateDistMatrix(ndmap)
-       tmpD <- as.matrix(D)
-       indxr <- which(rownames(tmpD)=="cut")
-       indxc <- which(colnames(tmpD)=="cut")
-       tmpD[indxr,] <- 0
-       tmpD[,indxc] <- 0
-       D <- as.dist(tmpD)
-
-       tD <- as.TSP(D)  # in TSP format
-       ### tD <- insert_dummy(tD, label="cut")  # adding extra dummy city
-       solu   <- solve_TSP(tD, method=method)
-       ntlength <- attr(solu, "tour_length")
-       n.order <- cut_tour(solu, "cut")  # new marker ordering
-       n.order <- c(n.order, ncol(ndmap)) # adding "cut" back in
-       # test if we should move to new realization
-       rnd <- runif(1,0,1)
-       MHprob <- exp( -1*(ntlength-otlength)/temp)
-       if (MHprob >= 1 | rnd < MHprob)
-      { # accept new realization
-        # rearrange dmap to be new order
-         dmap <- dmap[, n.order]  # reorder data with missing data
-         ndmap <- ndmap[,n.order] # reorder  newly imputed data
-         class(dmap) <- class(ndmap) <- "dmdata"
-
-         odmap <- ndmap  # assign newly imputed data to current data
-         otlength <- ntlength
-        #keep track of best realization
-         if(ntlength < besttlength)
-         {
-           bestmap <- ndmap
-           besttlength <- ntlength
-           blockstrbest <- IdentifyMarkerBlocks(bestmap)
-           bestdist <- RearrangeDist(blockstr, mrkord, blockstrbest)
-         }
-        } ## end if
-
-        if(!is.null(blockstr) & !is.null(mrkord))
-
-        blockstrobs <- IdentifyMarkerBlocks(odmap)
-        tmp <- RearrangeDist(blockstr, mrkord, blockstrobs) ## calculate distance metric
-        print(tmp)
-
-        res <- list(bestmap=bestmap, besttlength=besttlength, odmap=odmap, 
-                     otlength=otlength, dmap=dmap, bestdist=bestdist)
-
-
-
-        return(res)
-}
-
-
-
 
 DeletionMapping <- function(dmap=NULL, niterates=100, nwithin=100,cooling=0.99 , psampled=0.1, 
-                            method="concorde", blockstr=NULL, mrkord=NULL, ...)
+                            method="concorde", refblockstr=NULL, refmrkord=NULL, ...)
 {
     if(!is.dmdata(dmap)) stop("Object must be of class dmdata.")
     if( cooling < 0 | cooling > 1) stop(" Cooling constant must be between 0 and 1")
@@ -1093,7 +1029,7 @@ DeletionMapping <- function(dmap=NULL, niterates=100, nwithin=100,cooling=0.99 ,
     ##-----------------------------##
     dmap <- CleanData(dmap, ignoreNA=FALSE)
 
-    ## add cut to dmap
+    ## add cut to dmap. Done for computational reasons. 
     n <- colnames(dmap)
     dmap <- cbind(dmap, rep(0, nrow(dmap)))
     colnames(dmap) <- c(n , "cut")
@@ -1102,10 +1038,10 @@ DeletionMapping <- function(dmap=NULL, niterates=100, nwithin=100,cooling=0.99 ,
     odmap <- ImputeMissingGeno(dmap)
     bestmap <- odmap
     otlength <- besttlength <- 1000000  # starting tour length.
-    bestdist <- list("ntrueblocks"=0, "nobsblocks"=0, "mindist"=0, "minwrong"=0)
+    bestdist <- list("nrefblocks"=0, "nobsblocks"=0, "mindist"=0, "minwrong"=0)
 
     counter <- 1  
-   t <- rep(NA, niterates*nwithin)
+    t <- rep(NA, niterates*nwithin)
 
     temp <- 0.5/(cooling**niterates)
 
@@ -1119,6 +1055,7 @@ DeletionMapping <- function(dmap=NULL, niterates=100, nwithin=100,cooling=0.99 ,
 
        # find best ordering of new realization and its touring length
        D <- CreateDistMatrix(ndmap)
+       # adjusted D so that cut has 0 distance to every other city
        tmpD <- as.matrix(D)
        indxr <- which(rownames(tmpD)=="cut")
        indxc <- which(colnames(tmpD)=="cut")
@@ -1131,17 +1068,18 @@ DeletionMapping <- function(dmap=NULL, niterates=100, nwithin=100,cooling=0.99 ,
        solu   <- solve_TSP(tD, method=method)
        ntlength <- attr(solu, "tour_length")
        n.order <- cut_tour(solu, "cut")  # new marker ordering
-       n.order <- c(n.order, ncol(ndmap)) # adding "cut" back in
+       n.order <- c(n.order, ncol(ndmap)) # adding "cut" back in at end of ordering
        # test if we should move to new realization
        rnd <- runif(1,0,1)
        MHprob <- exp( -1*(ntlength-otlength)/temp)
        if (MHprob >= 1 | rnd < MHprob)
       { # accept new realization
+        arr.ind <- attr(ndmap, "imputed")  ## need this otherwise it is lost 
         # rearrange dmap to be new order
-         dmap <- dmap[, n.order]  # reorder data with missing data
          ndmap <- ndmap[,n.order] # reorder  newly imputed data
          class(dmap) <- class(ndmap) <- "dmdata"
-
+         # recoding the column index for imputed to match the new ordering
+         attr(ndmap, "imputed") <-  cbind(arr.ind[,1], n.order[arr.ind[,2]])
          odmap <- ndmap  # assign newly imputed data to current data
          otlength <- ntlength
         #keep track of best realization
@@ -1150,14 +1088,14 @@ DeletionMapping <- function(dmap=NULL, niterates=100, nwithin=100,cooling=0.99 ,
            bestmap <- ndmap
            besttlength <- ntlength
            blockstrbest <- IdentifyMarkerBlocks(bestmap)
-           bestdist <- RearrangeDist(blockstr, mrkord, blockstrbest)
+           bestdist <- RearrangeDist(refblockstr, refmrkord, blockstrbest)
          }
         } ## end if
 
-        if(!is.null(blockstr) & !is.null(mrkord))
+        if(!is.null(refblockstr) & !is.null(refmrkord))
 
-        blockstrobs <- IdentifyMarkerBlocks(odmap)
-        tmp <- RearrangeDist(blockstr, mrkord, blockstrobs) ## calculate distance metric
+        obsblockstr <- IdentifyMarkerBlocks(odmap)
+        tmp <- RearrangeDist(refblockstr, refmrkord, obsblockstr) ## calculate distance metric
         print(tmp)
 
         t[counter] <- besttlength
@@ -1166,6 +1104,34 @@ DeletionMapping <- function(dmap=NULL, niterates=100, nwithin=100,cooling=0.99 ,
        }
        temp <- temp * cooling
     }
+
+    ##----------------------------##
+    ## Final tidying of results   ##
+    ##----------------------------##
+    
+    ## Moving any columns with no deletions to the end of the bestmap
+    indx <- which(colSums(bestmap)==0)
+    if(length(indx) > 0){
+         arr.ind <- attr(bestmap, "imputed")  ## need this otherwise it is lost 
+         mrk <- c( colnames(bestmap[, -indx]), colnames(bestmap[, indx])) 
+         mrk.ord <- c(seq(1,ncol(bestmap))[-indx], seq(1,ncol(bestmap))[indx])
+         bestmap <- bestmap[, mrk.ord]
+         attr(bestmap, "imputed") <-  cbind(arr.ind[,1], mrk.ord[arr.ind[,2]])
+    }
+
+    ## saving matrix of imputed data locations
+    arr.ind <- attr(bestmap, "imputed")  ## need this otherwise it is lost 
+
+
+    ## removing "cut" from bestmap
+    indx <- which(colnames(bestmap)=="cut")
+    bestmap <- bestmap[,-indx]
+
+    ## adding imputed data locations
+    attr(bestmap, "imputed") <- arr.ind
+
+    ## class
+    class(bestmap) <- "dmdata" 
 
 
     return(list(bestmap=bestmap, besttlength=besttlength, t=t, bestdist=bestdist))
@@ -1195,68 +1161,13 @@ truemrkord   <- IdentifyMarkerOrd(dn)$orders
 
 
 
-#===================================================
-# Calculates the L1 distance for a single symbol
-# x: the symbol locations for the text string
-# y: the symbol locations for the pattern string
-#===================================================
-l1Dist.single <- function(x, y) {
-    sum(abs(x-y))
-}
-
-#===================================================
-# Calculates the L1 distance of two strings
-# Refer to Chapter 2 of pattern matching paper.
-# x: the text string (resultant order from algorithm)
-# y: the pattern string (known true ordering)
-# i: attempt to account for strings of differing lengths
-#===================================================
-l1Dist <- function(x, y, i=1) {
-
-    cost1 <- 0
-    cost2 <- 0
-
-    if(length(x) == length(y)) {
-
-        # Extract index locations for each seperate symbol
-        phix <- lapply(sort(unique(x)), function(k) which(x==k))
-        phiy <- lapply(sort(unique(y)), function(k) which(y==k))
-        phiz <- lapply(sort(unique(y)), function(k) which(rev(y)==k))
-
-        # Calculate cost for both y and rev(y) i.e. z
-        cost1 <- sum(sapply(1:length(phix), function(i) l1Dist.single(phix[[i]],phiy[[i]])))
-        cost2 <- sum(sapply(1:length(phix), function(i) l1Dist.single(phix[[i]],phiz[[i]])))
-    }
-
-    # For what this is attempting to do: refer to 3.2 in "Pattern Matching
-    # with address errors: rearrangement distances" The Case of Text and Pattern
-    # of Different Sizes. Doesn't quite work how I want it to.
-    else {
-
-        # Extract index locations for each seperate symbol, but only
-        # for the symbols that are in both strings
-        phix <- lapply(sort(unique(x)), function(k) which(x==k))
-        phiy <- lapply(sort(unique(x)), function(k) which(y[y%in%x]==k))
-        phiz <- lapply(sort(unique(x)), function(k) which(rev(y[y%in%x])==k))
-        
-        
-        y.i <- which(y==(y[y%in%x]))
-        z.i <- which(rev(y)==(rev(y)[rev(y)%in%x]))
-
-        # Calc distance for single symbol, but adjust the position index by i
-        cost1 <- sum(sapply(1:length(phix), function(k) l1Dist.single(phix[[k]]+i-1,phiy[[k]]+y.i[1]-1)))
-        cost2 <- sum(sapply(1:length(phix), function(k) l1Dist.single(phix[[k]]+i-i,phiz[[k]]+z.i[1]-1)))
-    }
-    return(min(cost1,cost2))
-}
 
 
-
-RearrangeDist <- function(blockstr=NULL, mrkord=NULL, blockstrobs=NULL)
+RearrangeDist <- function(refblockstr=NULL, refmrkord=NULL, obsblockstr=NULL)
 {
-## blockstr    vector object for true block structure (order specific)
-## mrkord      list object of true marker ordering within block structure (order specific)
-## blockstrobs vector object of realized block structure from simulated annealing  (order specific)
+## refblockstr    vector object for true block structure (order specific)
+## refmrkord      list object of true marker ordering within block structure (order specific)
+## obsblockstr vector object of realized block structure from simulated annealing  (order specific)
 
 ##-------------------------------------------------------------------------##
 ## Overview of Distance Metric                                             ##
@@ -1313,8 +1224,8 @@ RearrangeDist <- function(blockstr=NULL, mrkord=NULL, blockstrobs=NULL)
 
 ## number of blocks - true and observed
 res <- list()
-res[["ntrueblocks"]] <- length(unique(blockstr))
-res[["nobsblocks"]]  <- length(unique(blockstrobs))
+res[["nrefblocks"]] <- length(unique(refblockstr))
+res[["nobsblocks"]]  <- length(unique(refblockstr))
 
 
 
@@ -1327,12 +1238,12 @@ res[["nobsblocks"]]  <- length(unique(blockstrobs))
 ## calculate total rearrangement distance
 total.dist <- 0  ## initalize total rearrangement distance
 total.wrong <- 0 ## initalize total min number of wrongly placed markers
-for(ii in unique(blockstrobs))
+for(ii in unique(obsblockstr))
 {
  ## identify which true block best matches the observed block (based on max number of matching markers)
- m.obs <- names(blockstrobs)[which(blockstrobs==ii)] 
+ m.obs <- names(obsblockstr)[which(obsblockstr==ii)] 
 
- tb <- table(blockstr[match(m.obs, names(blockstr))])  ## frequency of markers in true blocks
+ tb <- table(refblockstr[match(m.obs, names(refblockstr))])  ## frequency of markers in true blocks
  best.block <- as.numeric(names(which(max(tb)==tb)))  ## best block (may be more than one if ties
 
  vdist <- rep(NA, length(best.block))
@@ -1340,12 +1251,12 @@ for(ii in unique(blockstrobs))
  for(jj in best.block)  ## allowing for ties of best block
  {
    ##  only keep matching (intersection of)  markers in m.obs and m
-   m <- names(blockstr)[which(blockstr==jj)]
+   m <- names(refblockstr)[which(refblockstr==jj)]
    m.obs.match <- m.obs[!is.na(match(m.obs, m))]
    m.match <- m[!is.na(match(m, m.obs))]
    ## recode common markers in m and m.obs but conditional on true marker recoding (mrkord)
-   m.obs.recoded <- unlist(mrkord)[match(m.obs.match, names(unlist(mrkord)))]  ## using coding of true ordering
-   m.recoded <- unlist(mrkord)[ match(m.match, names(unlist(mrkord)))]  ## using coding of true ordering
+   m.obs.recoded <- unlist(refmrkord)[match(m.obs.match, names(unlist(refmrkord)))]  ## using coding of true ordering
+   m.recoded <- unlist(refmrkord)[ match(m.match, names(unlist(refmrkord)))]  ## using coding of true ordering
  
    vdist[which(best.block==jj)] <- l1Dist(m.obs.recoded, m.recoded)  ## rearrangement distance
    vwrong[which(best.block==jj)] <- length(m.obs) - length(m.obs.match)  ## number of wrongly placed markers
@@ -1357,6 +1268,8 @@ for(ii in unique(blockstrobs))
 } ## end for ii over unique observed blocks
 res[["mindist"]] <- total.dist
 res[["minwrong"]] <- total.wrong
+
+res <- as.dmdist(res)
 
 return(res)
 

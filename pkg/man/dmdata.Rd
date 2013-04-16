@@ -5,7 +5,12 @@
 \alias{is.dmdata}
 \title{Delmap.data}
 \description{
-\code{dmdata} is an object of  class \code{dmdata}.
+\code{dmdata} is an object of  class \code{dmdata} which is escentially a \code{matrix} 
+object with \code{attr(dmdata, "dimnames")[1]} being a character vector of the line names, 
+\code{attr(dmdata, "dimnames")[1]} being a character vector of the marker names, and 
+\code{attr(dmdata, "imputed")} being an additional attribute which is 
+a two columned matrix giving the row,column 
+location of any elements in \code{dmdata} that have had their values imputed.
 
 \code{is.dmdata} tests if its argument is of object class \code{dmdata}.
 

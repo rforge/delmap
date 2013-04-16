@@ -9,11 +9,11 @@ Clean Data
 impact of NAs.
 }
 \usage{
-CleanData(dmat= NULL, ignoreNA=FALSE)
+CleanData(dmap= NULL, ignoreNA=FALSE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{dmat}{
+  \item{dmap}{
 An object of class \code{\link{dmdata}}
 }
   \item{ignoreNA}{

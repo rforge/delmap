@@ -2,17 +2,17 @@
 \alias{plot.dmdata}
 \alias{plot}
 \title{
-Plot of Deletion Map
+Colour Plot of Deletion Map
 }
 \description{
-Produces a plot of the deletion map 
+Produces a colour plot of the deletion map 
 }
 \usage{
 \method{plot}{dmdata}(x, main, \ldots)
 }
 \arguments{
   \item{x}{
-an object of class 'delmap.dat' that has either been read in from file or simulated. 
+an object of class \code{dmdata} that is allowed to have missing genotypes.
 }
   \item{main}{
 title of plot.
@@ -22,12 +22,25 @@ further arguments passed to or from other methods.
 }
 }
 \details{
-\code{plot.dmdata} is a function for visualizing the deletion data as a deletion map. Data for the marker 
-loci are plotted in column order. A solid dot denotes a deletion, a hollow dot denotes a missing value, and an empty cell 
-denotes observed dna. A solid vertical line separates the marker blocks. 
+A deletion map plot is produced from \code{x}. If \code{x} contains missing genotypes (NA), 
+then a simple black and white plot is produced where solid grey cirlces denote observed 
+deletions and unfilled grey circles denote missing genotypes. 
+
+
+If \code{x} does not contain any missing genotypes, then a colour plot is produced. Markers that do not vary in their genotype across the lines
+have marker labels of the same colour. A solid grey circle denotes an observed deletion. A solid
+red circle denotes an imputed deletion. A unfilled grey circle denotes an unobserved genotype that
+has not been imputed. A white square denotes an observed non-deletion. A solid red square
+denotes an imputed non-deletion.  A solid vertical line separates the marker blocks.
+
+
+Both the black and white plot and colour plot assumed the marker order to be the column order of 
+\code{x}. 
+
+
 }
 \author{
-James Totterdell
+Andrew George
 }
 \seealso{
 \code{\link{IdentifyMarkerBlocks}}
@@ -42,7 +55,11 @@ Slist <-  SimDeletions( numlines = 50, plines = 0.2, nummarkers = 20,
 Slist[["nomissing"]] <- CleanData(Slist[["nomissing"]])
 
 
-# plot contents of data as a deletion map
+# this produces a colour plot of the data
 plot(Slist[["nomissing"]])
+
+# this produces a black & white plot of the data
+plot(Slist[["missing"]])
+
 }
 

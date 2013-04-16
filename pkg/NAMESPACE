@@ -1,11 +1,13 @@
 export (
        as.dmdata, 
+       as.dmdist,
        CleanData, 
        Collapse,
        DeletionMapping,
        IdentifyMarkerBlocks,
        ImputeMissingGeno,
        is.dmdata,
+       is.dmdist,
        SimDeletions,
        CreateDistMatrix,
        IdentifyMarkerOrd,
@@ -13,7 +15,9 @@ export (
        ReadData,
        RearrangeDist)
 S3method(as.dmdata, matrix)
+S3method(as.dmdist, list)
 S3method(print, dmdata)
+S3method(print, dmdist)
 S3method(plot, dmdata)
 importFrom(fields, two.colors)
 import(seriation, TSP)

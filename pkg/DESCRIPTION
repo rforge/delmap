@@ -3,8 +3,8 @@ Type: Package
 Title: DELETION MAPPING
 Version: 1.0
 Date: 2012-11-12
-Author: Andrew W. George and James Totterdell
+Author: Andrew W. George
 Maintainer: Andrew George <andrew.george@csiro.au>
-Description:  Deletion mapping is a statistical technique for ordering genetic markers. Unlike linkage mapping that is reliant upon recombinations to order loci, deletion mapping depends upon genomic deletions. This package visualizes and analyzes deletion data on inbreds. The data can be read in from file or created withing the package via simulated.  
+Description: Delmap is an R package for mapping genetic markers via genomic deletions. It is assumed that the deletions are frequent, fairly large, and occur randomly throughout a genome. Delmap implements statistical techniqes for using overlapping genomic deletions in inbred lines to order finely genetic markers.  Delmap is not  a tool for genome-wide map construction. Instead, it compliments traditional linkage analysis by providing fine map information for tightly linked marker loci.  The package provides the facility to read, simulate, analyze, and vizualize deletion data. 
 License: GPL (>= 2.0)
 Depends: R (>= 2.15.0), TSP, seriation, fields

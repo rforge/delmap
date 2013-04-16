@@ -8,24 +8,24 @@ Rearrangement Distance
 A multivariate metric to measure the "distance" between two deletion mapping orders. 
 }
 \usage{
-RearrangeDist(blockstr=NULL, mrkord=NULL, blockstrobs=NULL)
+RearrangeDist(refblockstr=NULL, refmrkord=NULL, obsblockstr=NULL)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{blockstr}{
-a integer vector for the benchmark block structure. It is a named (with the marker labels) vector. 
+  \item{refblockstr}{
+a integer vector for the reference block structure. It is a named (with the marker labels) vector. 
 }
-  \item{mrkord}{
-a list object of length the number of unique blocks in the benchmark ordering. Each element is an integer vector 
+  \item{refmrkord}{
+a list object of length the number of unique blocks in the reference ordering. Each element is an integer vector 
 giving the marker ordering with the block. It is a named (with the marker labels) vector. 
 }
-  \item{blockstrobs}{
+  \item{obsblockstr}{
 a integer vector for the observed/realized block structure. It is a named (with the marker labels) vector. 
 }
 }
 \details{
 
-\code{RearrangeDist} is a multivariate metric for measuring the distance between a "true" or benchmark order
+\code{RearrangeDist} is a multivariate metric for measuring the distance between a reference order
 and an observed order. It is based on the L1 rearrangement distance of Amir et al. (2009) Journal of Computer and Systems 
 Sciences. Amir's rerrangement distance is a  measure for measuring the distance between two strings. However, 
 comparing two deletion mappign orders is not as simple as comparing two strings. 
@@ -34,7 +34,7 @@ are ordered within a block.  Hence, \code{RearrangeDist} reports a number of mea
 
 To describe \code{RearrangeDist},  consider the following example. 
 
-Suppose the benchmark block structure is
+Suppose the reference block structure is
 \tabular{cccccccccc}{
 M1 \tab M2 \tab M3 \tab M4 \tab M5 \tab \tab M6 \tab M7 \tab M8 \tab M9 \cr
 1  \tab 1  \tab  1 \tab 1  \tab 1  \tab \tab 2  \tab 2  \tab 2  \tab 2  \cr
@@ -43,7 +43,7 @@ Here, markers M1 to  M5 have overlapping deletions and hence belong to the same 
 Similarly, markers M6 to M9 have overlapping deletions (but not with M1 to M5) and belong to the same block 
 structure. 
 
-Let the marker ordering for the benchmark order be 
+Let the marker ordering for the reference order be 
 \tabular{cccccccccc}{
 M1 \tab M2 \tab M3 \tab M4 \tab M5 \tab \tab M6 \tab M7 \tab M8 \tab M9 \cr
 1  \tab 1  \tab  2 \tab 2  \tab 3  \tab \tab 1  \tab 1  \tab 2  \tab 2  \cr}
@@ -59,7 +59,7 @@ M1 \tab M6 \tab M5 \tab M4 \tab \tab M2 \tab M7 \tab \tab M3 \tab M9 \tab M8  \c
 }
 By running \code{RearrangeDist} on these data, it would output 
 \itemize{
-\item \code{ntrueblocks} the number of blocks in the benchmark order which is 2
+\item \code{nrefblocks} the number of blocks in the reference order which is 2
 \item \code{nobsblocks} the number of blocks in the observed order which is  3
 \item \code{mindist} the total minimum rearrangement distance which is 2+0+0=2 
 \item \code{minwrong} the total minimum number of wrongly placed markers is 1+1+1=3
@@ -67,7 +67,7 @@ By running \code{RearrangeDist} on these data, it would output
 See the vignette for details on how \code{mindist} is calculated. 
 }
 \value{
-A list with elements \code{ntrueblocks} for the number of blocks in the benchmark ordering, 
+A list with elements \code{nrefblocks} for the number of blocks in the reference ordering, 
 \code{nobsblocks} for the number of blocks in the obsered marker ordering, 
 \code{mindist} for the minimum total rearrangement distance, and
 \code{minwrong} for the minumum total number of misplaced marker loci. A misplaced marker locus is a marker locus 
@@ -84,11 +84,11 @@ each block for the observed order. Only the blocking structure for the observed 
 \code{\link{IdentifyMarkerBlocks}}, \code{\link{IdentifyMarkerOrd}}, \code{\link{DeletionMapping}}
 }
 \examples{
-# benchmark block structure
+# reference block structure
 bl <- c(rep(1, 5), rep(2, 4))
 names(bl) <-  paste("M", 1:9, sep="")
 
-# benchmark marker ordering
+# reference marker ordering
 mr <- list()
 mr[[1]] <- c(1,1,2,2,3)
 mr[[2]] <- c(1,1,2,2)
@@ -99,8 +99,8 @@ names(mr[[2]]) <- paste("M", 6:9, sep="")
 ob <- c(1,1,1,1,2,2,3,3,3)
 names(ob) <- c("M1", "M6", "M5", "M4", "M2", "M7", "M3", "M9", "M8")
 
-# calculate rearrangement distance between benchmark and observed order 
-RearrangeDist(blockstr=bl, mrkord=mr, blockstrobs=ob)
+# calculate rearrangement distance between reference and observed order 
+RearrangeDist(refblockstr=bl, refmrkord=mr, obsblockstr=ob)
 
 
 }

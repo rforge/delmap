@@ -7,7 +7,7 @@
 }
 \usage{
 DeletionMapping(dmap=NULL, niterates=100, nwithin=100, cooling=0.99, psampled=0.1, method="concorde",
-                blockstr=NULL, mrkord=NULL, ...)
+                refblockstr=NULL, refmrkord=NULL, ...)
 }
 \arguments{
   \item{dmap}{
@@ -31,9 +31,9 @@ annealing algorithm.
  \item{method}{method to solve the TSP (default: nearest insertion
           algorithm; see details).
 }
- \item{blockstr}{integer vector with true block assignments if known.
+ \item{refblockstr}{integer vector with true block assignments if known.
 }
- \item{mrkord}{list of length the number of blocks. Each element is an integer vector giving the order of the markers within the block.}  
+ \item{refmrkord}{list of length the number of blocks. Each element is an integer vector giving the order of the markers within the block.}  
  \item{...}{other parameters that are to be passed to the TSP solving function \code{solve_TSP}.
 }
 }
@@ -62,14 +62,19 @@ dclean <- CleanData(dfull[["missing"]])
 mrks <- colnames(dclean)
 cindx <- match(mrks, colnames(dfull[["nomissing"]]))
 dnoNA <- as.dmdata(dfull[["nomissing"]][,cindx])
-trueblockstr <- IdentifyMarkerBlocks(dnoNA)  ## simulated true block structure
-truemrkord   <- IdentifyMarkerOrd(dnoNA)$orders  ## simulated true marker structure
+refblockstr <- IdentifyMarkerBlocks(dnoNA)  ## simulated true block structure
+refmrkord   <- IdentifyMarkerOrd(dnoNA)$orders  ## simulated true marker structure
 
 
 # permute dclean so simulated data not in true order
 dperm <- PermuteCols(dclean)
-DeletionMapping(dmap=dperm, niterates=5, nwithin=5, cooling=0.95, psampled=0.2, method="2-opt", 
-                     blockstr=trueblockstr, mrkord=truemrkord)
+a <- DeletionMapping(dmap=dperm, niterates=50, nwithin=5, cooling=0.95, psampled=0.2, method="2-opt", 
+                     refblockstr=refblockstr, refmrkord=refmrkord)
+
+# colour plot of deletion map
+plot(a$bestmap)
+
+
 
 
 # to run the exact TSP solver concorde, first specify the absolute path of where it 
