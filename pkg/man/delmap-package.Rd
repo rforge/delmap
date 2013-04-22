@@ -31,6 +31,9 @@ Maintainer: Andrew W. George <andrew.george@csiro.au>
 }
 \keyword{ package }
 \examples{
-S <- SimDeletions(numlines = 500, plines = 0.2, nummarkers = 20,
+# generate map for a single chromosome with 20 equally distant marker loci
+map <- sim.dmmap(100,20)
+
+S <- sim.dmdata(numlines = 500, plines = 0.2, map = map, 
     Enumdel = 8, p.missing = 0.02,  seed = NULL)
 }

@@ -72,7 +72,7 @@ rows are the markers and the columns are the plants.
 Andrew W. George
 }
 \seealso{
-See Also \code{\link{SimDeletions}}, \code{\link{read.table}}, \code{\link{dmdata}}
+See Also \code{\link{sim.dmdata}}, \code{\link{read.table}}, \code{\link{dmdata}}
 }
 \examples{
 # read in deletion data

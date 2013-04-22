@@ -39,7 +39,7 @@ is of the wrong form, the function returns an error message.
 Andrew W. George
 }
 \seealso{
-\code{\link{ReadData}}
+\code{\link{read.dmdata}}
 }
 
 

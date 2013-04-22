@@ -50,9 +50,12 @@ Andrew W George
 \code{\link{Collapse}}
 }
 \examples{
+# generate map for a single chromosome with 20 equally distant marker loci
+map <- sim.dmmap(100,20)
+
 
 # simulate deletion data with 50 marker loci collected on 50 inbred lines
-dfull <-   SimDeletions( numlines = 50, plines = 0.2, nummarkers = 50,
+dfull <-   sim.dmdata( numlines = 50, plines = 0.2, map = map, 
     Enumdel = 8, p.missing = 0.1,  seed = 1)
 
 # clean deletion data by removing noninformative rows/columns

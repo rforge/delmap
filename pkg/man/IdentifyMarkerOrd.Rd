@@ -44,8 +44,11 @@ The marker blocks may change if marker genotypes are being imputed.
 \code{\link{ImputeMissingGeno}}; \code{\link{IdentifyMarkerBlocks}}
 }
 \examples{
+# generate map for a single chromosome with 20 equally distant marker loci
+map <- sim.dmmap(100,20)
+
 # generate deletion data
-Slist <-  SimDeletions( numlines = 50, plines = 0.2, nummarkers = 20,
+Slist <-  sim.dmdata( numlines = 50, plines = 0.2, map = map,
     Enumdel = 4, p.missing = 0.02,  seed = 1)
 
 # class of object that does not contain any missing data

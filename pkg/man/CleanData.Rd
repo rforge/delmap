@@ -37,11 +37,14 @@ An object of class \code{\link{dmdata}}.
 Andrew W George
 }
 \seealso{
-\code{\link{ReadData}}, \code{\link{ImputeMissingGeno}}, \code{\link{Collapse}}
+\code{\link{read.dmdata}}, \code{\link{ImputeMissingGeno}}, \code{\link{Collapse}}
 }
 \examples{
+# generate map for a single chromosome with 20 equally distant marker loci
+map <- sim.dmmap(100,50)
+
 # generate deletion data
-Slist <-  SimDeletions( numlines = 50, plines = 0.2, nummarkers = 30,
+Slist <-  sim.dmdata( numlines = 50, plines = 0.2, map = map,
     Enumdel = 4, p.missing = 0.05,  seed = 1)
 
 # Number of marker loci before being cleaned

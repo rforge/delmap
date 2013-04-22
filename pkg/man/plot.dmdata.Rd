@@ -46,8 +46,11 @@ Andrew George
 \code{\link{IdentifyMarkerBlocks}}
 }
 \examples{
+# generate map for a single chromosome that has 20 equally distance marker loci
+map <- sim.dmmap(100, 20)
+
 # generate deletion data
-Slist <-  SimDeletions( numlines = 50, plines = 0.2, nummarkers = 20,
+Slist <-  sim.dmdata( numlines = 50, plines = 0.2, map = map, 
     Enumdel = 4, p.missing = 0.02,  seed = 1)
 
 

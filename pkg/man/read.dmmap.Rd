@@ -62,7 +62,7 @@ of the marker loci.  Rows are placed in  map order.
 Andrew W. George
 }
 \seealso{
-See Also \code{\link{SimDeletions}}, \code{\link{read.table}}, \code{\link{dmdata}}
+See Also \code{\link{sim.dmdata}}, \code{\link{read.table}}, \code{\link{dmdata}}
 }
 \examples{
 # read in deletion data

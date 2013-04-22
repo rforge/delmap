@@ -8,11 +8,13 @@ export (
        ImputeMissingGeno,
        is.dmdata,
        is.dmdist,
-       SimDeletions,
+       sim.dmdata,
+       sim.dmmap,
        CreateDistMatrix,
        IdentifyMarkerOrd,
        PermuteCols,   
-       ReadData,
+       read.dmdata,
+       read.dmmap,
        RearrangeDist)
 S3method(as.dmdata, matrix)
 S3method(as.dmdist, list)

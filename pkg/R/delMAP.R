@@ -204,7 +204,7 @@ UniqueCols <- function(mat) {
   create.structure.SimDeletion <- function(nlines, nmarkers, labs)
   {
    ## Internal function
-   ## Purpose:     To create data structure for SimDeletions
+   ## Purpose:     To create data structure for sim.dmdata
  
    ## create 2-D data structure 
    deldat  <- matrix(data=0, nrow=nlines, ncol=nmarkers)
@@ -250,10 +250,13 @@ UniqueCols <- function(mat) {
 
     for(ii  in 1:length(delsize))
     {
-       start.rindx <- sample( 1:(1+nummarkers- delsize[ii]), 1) 
-       
-       deldat[ chosen.lines[ii],  start.rindx:(start.rindx+delsize[ii] - 1)  ] <- 1
-
+       if(nummarkers - delsize[ii] < 0) {
+          ## entire row are 1's
+          deldat[ chosen.lines[ii], ] <- 1
+        } else {
+         start.rindx <- sample( 1:(1+nummarkers- delsize[ii]), 1) 
+         deldat[ chosen.lines[ii],  start.rindx:(start.rindx+delsize[ii] - 1)  ] <- 1
+        } ## end if
     }  ## end for ii  
     deldat
    }
@@ -286,25 +289,23 @@ UniqueCols <- function(mat) {
 
 
   ## clean data
-  cleandata.ReadData <- function(dat, datafile, marker.names, line.names)
+  cleandata <- function(dat, file, names.pres )
   {
     ## Internal function
-    ## Purpose: to identify delation, give a summary of the data read, and abbreviate 
-    ##          the marker and line names
+    ## Purpose: to identify delation, give a summary of the data read
     ## Args:    dat  data frame 
-    ##          datafile containing file name
-    ## Outputs:  data matrix of type "dmdata" with abbreviated marker & line names
+    ##          file containing file name
+    ##          names.pres logical for whether the labels are supplied or to be generated
+    ## Outputs:  data matrix of type "dmdata" with marker & line names
     ##           and recoded genotypes to be 1,0, NA
 
 
-  ## identify deletions and non-deletions
-  ## (I have assumed deletions are fairly rare)
   genos <- as.vector(table(dat))
   nodelgeno <- names(table(dat))[which(genos== max(genos))]
   delgeno <- names(table(dat))[which(genos == min(genos))]
 
   cat("\n\n")
-  cat(" Deletion data has been read in from the file:", datafile, "\n")
+  cat(" Deletion data has been read in from the file:", file, "\n")
   cat(" The original data contains: \n")
   cat("        ",  nrow(dat), " rows (lines) \n")
   cat("        ",  ncol(dat), " columns (marker loci) \n")
@@ -317,22 +318,8 @@ UniqueCols <- function(mat) {
   recoded.dat[which(dat==delgeno, arr.ind=T)] <- 1
   recoded.dat[is.na(dat)] <- NA
 
-  ## abbreviate marker names
-  new.mrk.nms <- paste("M", 1:ncol(dat), sep="")
-  colnames(recoded.dat) <- new.mrk.nms
-  if(marker.names) colnames(recoded.dat) <- colnames(dat)
-
-
-  ## abbreviate line names
-  new.line.nms <- paste("L", 1:nrow(dat), sep="")
-  rownames(recoded.dat) <- new.line.nms
-  if(line.names) rownames(recoded.dat) <- rownames(dat)
-
-  # new class of object where object contains matrix data with special attributes
-  class(recoded.dat) <- "dmdata"
-
   return(recoded.dat)
-  }  ## end function cleandata.ReadData
+  }  ## end function 
 
 
 
@@ -400,8 +387,8 @@ l1Dist <- function(x, y, i=1) {
 
 
 
-SimDeletions <- function(numlines=NULL, plines=0.5, nummarkers=NULL, labels=NULL, Enumdel=4, 
-                         p.missing=NULL, seed=NULL)
+sim.dmdata <- function(numlines=NULL, plines=0.5, map=NULL, numblocks=1, Enumdel=4, 
+                         p.missing=0.05, seed=NULL)
 {
 
   ## Purpose:        to simulate deletion data.
@@ -414,38 +401,85 @@ SimDeletions <- function(numlines=NULL, plines=0.5, nummarkers=NULL, labels=NULL
   ## Args
   ## numlines   -  number of HIB plants in population
   ## plines     -  prob of a line carrying a deletion
-  ## nummarkers -  number of marker loci 
-  ## labels     -  marker names (optional)
+  ## map        -  marker map in list format
+  ## numblocks  -  minimum number of blocks per chromosome
   ## Enumdel    -  expected number of deletions for poisson distribution of deletions
   ## p.missing  -  prob of a genotype being missing
   ## seed       -  a numeric value to initialize the pseudo-random number generator
   ##
   ## Returns    -  returns two dmdata objects, one with all the genotypes observed
   ##               and the other with missing genotypes (if p.missing is not null). 
- 
 
+  ##-------------------##
+  ##   Checks          ##
+  ##-------------------##
+
+  if(is.null(numlines)) stop(" Must specify number of lines.")
+  if(is.null(map)) stop(" Must specify map. Use sim.dmmap to create a generic map.")
+  if(numlines < 1) stop(" Must have an integer number of lines.") 
   ## set seed if not null
   if(!is.null(seed)) set.seed(seed)
 
-  ## create 2D data structure
-  deldat <- create.structure.SimDeletion(numlines, nummarkers, labels) 
 
+  dm <- list("missing"= vector("list", length(map)), "nomissing"=vector("list", length(map)))
+  names(dm[["missing"]]) <- as.character(1:length(map))
+  names(dm[["nomissing"]]) <- as.character(1:length(map))
 
+  for(ch in 1:length(map))
+  {  
+     # get total number of markers on chromosome
+     t.mrk <- length(map[[ch]])
 
-   ## generate deletions by
-   ##  1. sampling lines that contain deletions
-   ##  2. sampling length of deletions
-   ##  3. sampling location of deletions. 
+     # divide number of markers along chromosome into numblocks
+     t.mrk.block <- round(t.mrk/numblocks)
 
+     if(t.mrk.block <= 1)
+     {
+        cat(" To few marker loci on chromosome ", names(map)[ch], "to divide into ", numblocks, "blocks.\n")
+        opt <- options(show.error.messages=FALSE)
+        on.exit(options(opt))
+        stop()
+     } 
+
+     dmdat.miss <- NULL    
+     dmdat.full <- NULL    
+     for(jj in 1: numblocks)
+     { 
+        if(jj < numblocks){
+               indx <- (jj-1)*t.mrk.block +seq(1, t.mrk.block)
+         } else {
+            indx <- seq( (jj-1)*t.mrk.block+1, t.mrk)
+         }
+ 
+        mrks <- names(map[[ch]])[indx]
+
+        ## create 2D data structure
+        deldat <- create.structure.SimDeletion(numlines, length(mrks), mrks) 
+
+        ## generate deletions by
+        ##  1. sampling lines that contain deletions.
+        ##  2. sampling length of deletions.
+        ##  3. sampling location of deletions. 
   
-  res <- step1.simulation(numlines, plines)
+        res <- step1.simulation(numlines, plines)
 
-  deldat <- with(res, step23.simulation(rnumlines, Enumdel, numlines, nummarkers, chosen.lines, deldat ))
-   
+        deldat <- with(res, step23.simulation(rnumlines, Enumdel, numlines, length(mrks), chosen.lines, deldat ))
   
-   return(add.missing.deldat(p.missing, deldat))
+        res <- add.missing.deldat(p.missing, deldat) 
 
-}  ## end function  SimDeletions
+        dmdat.miss <- cbind(dmdat.miss, as.matrix(res[[1]]))
+        dmdat.full <- cbind(dmdat.full, deldat)
+     } ## end for jj in 1:numblocks 
+
+     dm[["missing"]][[ch]] <- as.dmdata(dmdat.miss)
+     dm[["nomissing"]][[ch]] <- as.dmdata(dmdat.full)
+
+  } ## end for
+
+ 
+   return(dm)
+
+}  ## end function  sim.dmdata
 
 print.dmdata <- function(x, ...)
 {
@@ -466,31 +500,6 @@ print.dmdist <- function(x, ...)
  cat( "      ",x[[1]], "                   ", x[[2]], "              ", x[[3]], "                ", x[[4]], "\n\n")
 
 } ## end function 
-
-
-ReadData <- function(datafile, line.names=FALSE,na.strings="NA", marker.names=FALSE, csv=FALSE)
-{
- ## Purpose:        to read in deletion data.
- ## Functionality:  Reads in space and comma seperated data where marker/line names
- ##                 may or maynot be present. 
-
- if(missing(datafile))
-   stop(" Input file cannot be missing.")
-
-  ## check inputs
-  checkinputs.ReadData(datafile, line.names, marker.names)
-
- fsep <- "";  if(csv)  fsep <- ","
- col.number <- NULL; if(line.names) col.number <- 1
-
-  ## read data from file
-  dat <- read.data(file=datafile, header= marker.names, sep= fsep, na.strings=na.strings, row.names=col.number)
-
-  ## clean data (abbreviated marker & line names, of type dmdata, and genotypes are
-  ##    0, 1, NA
-  cleandata.ReadData(dat, datafile, marker.names, line.names)
-} ## end ReadData
-
 
 
 CreateDistMatrix <- function(dmat=NULL)
@@ -1145,18 +1154,18 @@ DeletionMapping <- function(dmap=NULL, niterates=100, nwithin=100,cooling=0.99 ,
 
 ## workign on distance Metric
 
-d <-   SimDeletions( numlines = 50, plines = 0.2, nummarkers = 50,
-    Enumdel = 8, p.missing = 0.1,  seed = 1)
+#d <-   sim.dmdata( numlines = 50, plines = 0.2, nummarkers = 50,
+#    Enumdel = 8, p.missing = 0.1,  seed = 1)
 
-dc <- CleanData(d[["missing"]])
+#dc <- CleanData(d[["missing"]])
 
 
-## obtain true blocking structure
-mrks <- colnames(dc)
-cindx <- match(mrks, colnames(d[["nomissing"]]))
-dn <- as.dmdata(d[["nomissing"]][,cindx])
-trueblockstr <- IdentifyMarkerBlocks(dn)
-truemrkord   <- IdentifyMarkerOrd(dn)$orders
+### obtain true blocking structure
+#mrks <- colnames(dc)
+#cindx <- match(mrks, colnames(d[["nomissing"]]))
+#dn <- as.dmdata(d[["nomissing"]][,cindx])
+#trueblockstr <- IdentifyMarkerBlocks(dn)
+#truemrkord   <- IdentifyMarkerOrd(dn)$orders
 
 
 
@@ -1274,6 +1283,185 @@ res <- as.dmdist(res)
 return(res)
 
 } ## end function
+
+
+
+##-------------------------##
+##  Reading in Data        ##
+##-------------------------##
+
+read.dmmap <- function(file, sep="", ...)
+{
+ if(missing(file))
+    stop(" Input file cannot be missing.")
+
+   if(!file.exists(file))
+   stop(" Input file does not exist.")
+
+
+ ## checking for correct number of header labels and fields in records
+   cf <- count.fields(file, sep=sep)
+   if(length(cf)==1)
+     stop("File only contains a single line.")
+
+  if (length(unique(cf))>1)
+  { ## file has incorrect record length
+    df <- data.frame(row=1:length(cf), n.elements=cf)
+    cat(" \n Rows have incorrect number of elements \n\n")
+    cat(" Number of elements in each row \n")
+    cat(c(df, "\n"))
+    opt <- options(show.error.messages=FALSE)
+    on.exit(options(opt))
+    stop()
+   } # end if length(unique(cf))
+
+
+  mapin <- read.table(file= file, header=TRUE,check.names = FALSE)
+  map <- list()
+  for (i in names(table(mapin[, 2]))) {
+        map[[i]] <- mapin[which(mapin[, 2] == i), 3]
+        names(map[[i]]) <- mapin[which(mapin[, 2] == i), 
+            1]
+       map[[i]] <- sort(map[[i]])
+  }
+ 
+  map
+
+}
+
+
+read.dmdata <- function(file, sep="", na.strings="NA", mrks.as.rows=TRUE, row.names=1, names.pres=TRUE, ...)
+{
+   ## performing checks
+  if(missing(file))
+    stop(" Input file cannot be missing.")
+
+ if(!file.exists(file))
+   stop(" Input file does not exist.")
+
+ if(!is.logical(mrks.as.rows))
+   stop("mrks.as.rows must be TRUE/FALSE only. If TRUE, the first column contains the names of the markers.")
+  
+  if(!is.logical(names.pres))
+    stop("names.pres must be TRUE/FALSE only. If TRUE, marker and plant names are present in the file.")
+   
+
+   ## checking for correct number of header labels and fields in records
+   cf <- count.fields(file, sep=sep)
+   if(length(cf)==1)
+     stop("File only contains a single line.")
+
+   if (names.pres) 
+   { ## file contains marker and plant names 
+     if(length(unique(cf))==2) 
+        { ## checking to make sure we don't have lines of the same length as header
+          if (sum(cf== cf[1])> 1) 
+          {
+             df <- data.frame(row.no=1:length(cf), no.elements=cf)
+             cat(" \n Rows have incorrect number of elements \n \n")
+             cat(" Number of elements in each row: \n")
+             print(df, row.names=FALSE)
+             opt <- options(show.error.messages=FALSE)
+             on.exit(options(opt))
+             stop()
+          }  # end sum(cf== cf[1])> 1
+        } # end if length(unique(cf))==2
+
+     if (length(unique(cf)) > 2) 
+     {  ## file has incorrect record length 
+       df <- data.frame(row.no=1:length(cf), no.elements=cf)
+       cat(" \n Rows have incorrect number of elements \n \n")
+       cat(" Number of elements in each row: \n")
+       print(df, row.names=FALSE)
+       opt <- options(show.error.messages=FALSE)
+       on.exit(options(opt))
+       stop()
+     } else { ## file has correct record length
+      if (cf[1] != cf[2] - 1)
+      { ## file's header line not of correct length
+          if (!mrks.as.rows) stop(" Incorrect number of marker labels ")
+          if (mrks.as.rows)  stop(" Incorrect number of plant labels ")
+      } # end if cf[1]
+    } # end if length(unique(cf))
+   }  else {
+      ## file only contains the data
+     if (length(unique(cf))>1)
+     { ## file has incorrect record length
+       df <- data.frame(row=1:length(cf), n.elements=cf)
+       cat(" \n Rows have incorrect number of elements \n\n")
+       cat(" Number of elements in each row \n")
+       cat(c(df, "\n"))
+       opt <- options(show.error.messages=FALSE)
+       on.exit(options(opt))
+       stop()
+     } # end if length(unique(cf))
+  } ## end if name.pres
+
+  if(!names.pres) ## no marker or plant names 
+       rt <- read.table(file=file, header=FALSE, ...)
+  else  ## marker and plant names being supplied
+       rt <- read.table(file=file, header=TRUE, row.names=row.names, ...)
+
+   # convert rt from data frame to matrix
+   rt <- as.matrix(rt)
+
+  ## Another very important check
+  genos <- as.vector(table(rt))
+  if(length(genos) > 2)
+  { 
+      cat(" Data file has more than two genotype classes: ", names(table(rt)), "\n")
+      stop() 
+  }
+    
+  if(mrks.as.rows) ## transform
+       rt <- t(rt)
+
+   # clean data
+  rt <- cleandata(rt, file, names.pres)
+   
+   # turn into dmdata object 
+   rt <- as.dmdata(rt)
+
+   return(rt)
+
+} ## end function
+
+
+sim.dmmap <- function (len = rep(100, 20), n.mar = 10,  eq.spacing = FALSE) 
+{
+    if (length(len) != length(n.mar) && length(len) != 1 && length(n.mar) != 
+        1) 
+        stop("Lengths of vectors len and n.mar do not conform.")
+    if (length(len) == 1) 
+        len <- rep(len, length(n.mar))
+    else if (length(n.mar) == 1) 
+        n.mar <- rep(n.mar, length(len))
+    n.chr <- length(n.mar)
+    map <- vector("list", n.chr)
+    names(map) <- as.character(1:n.chr)
+    for (i in 1:n.chr) {
+       if (!eq.spacing) {
+                map[[i]] <- sort(runif(n.mar[i], 0, len[i]))
+                map[[i]] <- map[[i]] - min(map[[i]])
+       }
+       else {
+                map[[i]] <- seq(0, len[i], length = n.mar[i] + 
+                  1)
+                map[[i]] <- map[[i]][-1] - map[[i]][2]/2
+            }
+
+        names(map[[i]]) <- paste("D", names(map)[i], "M", 1:n.mar[i], 
+            sep = "")
+
+    }
+    map
+}  ## end function
+
+
+
+
+
+
 
 
 
