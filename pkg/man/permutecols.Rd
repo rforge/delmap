@@ -1,23 +1,23 @@
-\name{PermuteCols}
-\alias{PermuteCols}
+\name{permutecols}
+\alias{permutecols}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 Change Order of Marker Columns
 }
 \description{
-\code{PermuteCols} column permutes the data in the object deldata.mat.
+\code{permutecols} column permutes the deletion data for each chromosome. 
 }
 \usage{
-PermuteCols(dmat= NULL)
+permutecols(x= NULL)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{dmat}{
+  \item{x}{
 An object of class \code{\link{dmdata}}
 }
 }
 \details{
-\code{PermuteCols} permutes, randomly, the order of the columns of genotype data.
+\code{permutecols} permutes, randomly, the order of the columns of genotype data.
 }
 \value{
 An object of class \code{\link{dmdata}}.
@@ -38,6 +38,6 @@ Slist <-  sim.dmdata( numlines = 50, plines = 0.2, map = map,
 print(Slist[["nomissing"]])
 
 # permute the data and print the data, including the new marker ordering
-print(PermuteCols(Slist[["nomissing"]]))
+print(permutecols(Slist[["nomissing"]]))
 
 }

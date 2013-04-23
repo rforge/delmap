@@ -1,5 +1,5 @@
-\name{IdentifyMarkerOrd}
-\alias{IdentifyMarkerOrd}
+\name{idmarkerorder}
+\alias{idmarkerorder}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 Identify Marker Orderings
@@ -9,7 +9,7 @@ This function identifies the different possible marker orders that are possible 
 marker order.  The assumed marker order is derived from the order of the marker columns in the object \code{dmat}. 
 }
 \usage{
-IdentifyMarkerOrd(dmat = NULL)
+idmarkerorder(dmat = NULL)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -18,9 +18,9 @@ An object of class \code{\link{dmdata}} which contains the genotype data in 0/1 
 }
 }
 \details{
-In some cases, it is possible to change the ordering of the marker loci (ie the order of the columns of genotype data) without changing the overall pattern of deletions.  With \code{IdentifyMarkerOrd} we are able to find all possible orderings that are consistent with an assumed marker ordering. 
+In some cases, it is possible to change the ordering of the marker loci (ie the order of the columns of genotype data) without changing the overall pattern of deletions.  With \code{idmarkerorder} we are able to find all possible orderings that are consistent with an assumed marker ordering. 
 
-The different marker orderings may occur in marker blocks. These blocks are identified with the function \code{IdentifyMarkerBlocks}.  Marker blocks are groupings of marker loci that, according to the deletion data, can occur in any order. \code{IdentifyMarkerOrd} orders marker loci within marker blocks.
+The different marker orderings may occur in marker blocks. These blocks are identified with the function \code{IdentifyMarkerBlocks}.  Marker blocks are groupings of marker loci that, according to the deletion data, can occur in any order. \code{idmarkerorder} orders marker loci within marker blocks.
 
 Missing genotypes are not allowed and must first be imputed with \code{\link{ImputeMissingGeno} }
 }
@@ -41,7 +41,7 @@ Andrew W. George
 The marker blocks may change if marker genotypes are being imputed.
 }
 \seealso{
-\code{\link{ImputeMissingGeno}}; \code{\link{IdentifyMarkerBlocks}}
+\code{\link{ImputeMissingGeno}}; \code{\link{idmarkerblocks}}
 }
 \examples{
 # generate map for a single chromosome with 20 equally distant marker loci
@@ -55,9 +55,9 @@ Slist <-  sim.dmdata( numlines = 50, plines = 0.2, map = map,
 class(Slist[["nomissing"]])
 
 ## Clean data i.e. remove rows/columns without deletion data
-Slist[["nomissing"]] <- CleanData(Slist[["nomissing"]])
+Slist[["nomissing"]] <- cleandata(Slist[["nomissing"]])
 
 # print the block and possible marker orderings with each block for
 # the simulated deletion data
-IdentifyMarkerOrd(Slist[["nomissing"]])
+idmarkerorder(Slist[["nomissing"]])
 }

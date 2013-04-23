@@ -1,5 +1,5 @@
-\name{IdentifyMarkerBlocks}
-\alias{IdentifyMarkerBlocks}
+\name{idmarkerblocks}
+\alias{idmarkerblocks}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 Identify Marker Blocks
@@ -9,11 +9,11 @@ This function identifies all marker blocks from the deletion data. The deletion
 data cannot contain any missing genotypes.
 }
 \usage{
-IdentifyMarkerBlocks(dmat = NULL)
+idmarkerblocks(x)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{dmat}{
+  \item{x}{
 an object of class delmap.data which contains the genotype data in 0/1 form and has no missing genotypes.
 }
 }
@@ -38,11 +38,12 @@ Andrew W. George
 The marker blocks may change if marker genotypes are being imputed.
 }
 \seealso{
-\code{\link{IdentifyMarkerOrd}}
+\code{\link{idmarkerorder}}
 }
 \examples{
-# generate map with 20 equally spaced marker loci. 
-map <- sim.dmmap(100, 20)
+# generate map with 10 chromosomes, each of length 
+# 100 cM and each with 50  equally spaced marker loci. 
+map <- sim.dmmap(rep(100,10), 50)
 # generate deletion data
 Slist <-  sim.dmdata( numlines = 50, plines = 0.2, map = map,
     Enumdel = 4, p.missing = 0.02,  seed = 1)
@@ -51,9 +52,9 @@ Slist <-  sim.dmdata( numlines = 50, plines = 0.2, map = map,
 class(Slist[["nomissing"]])
 
 ## Clean data i.e. remove rows/columns without deletion data
-Slist[["nomissing"]] <- CleanData(Slist[["nomissing"]])
+Slist[["nomissing"]] <- cleandata(Slist[["nomissing"]])
 
 # print the block and possible marker orderings with each block for
 # the simulated deletion data
-IdentifyMarkerBlocks(Slist[["nomissing"]])
+idmarkerblocks(Slist[["nomissing"]])
 }

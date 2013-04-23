@@ -1,19 +1,19 @@
-\name{CleanData}
-\alias{CleanData}
+\name{cleandata}
+\alias{cleandata}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 Clean Data 
 }
 \description{
-\code{CleanData} removes those rows and columns that do not carry any deletions. See \code{details} for 
+\code{cleandata} removes those rows and columns that do not carry any deletions. See \code{details} for 
 impact of NAs.
 }
 \usage{
-CleanData(dmap= NULL, ignoreNA=FALSE)
+cleandata(dmdat= NULL, ignoreNA=FALSE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{dmap}{
+  \item{dmdat}{
 An object of class \code{\link{dmdata}}
 }
   \item{ignoreNA}{
@@ -52,7 +52,7 @@ nrow(Slist[["missing"]])
 
 
 # Clean data but where NAs affect which rows/columns are removed
-a <- CleanData(Slist[["missing"]])
+a <- cleandata(Slist[["missing"]])
 a[,] #print data matrix
 nrow(a)
 
