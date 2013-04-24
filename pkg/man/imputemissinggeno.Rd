@@ -1,5 +1,5 @@
-\name{ImputeMissingGeno}
-\alias{ImputeMissingGeno}
+\name{imputemissinggeno}
+\alias{imputemissinggeno}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 Impute Missing Marker Genotypes
@@ -8,10 +8,10 @@ Impute Missing Marker Genotypes
 This function imputes any missing marker genotypes.  
 }
 \usage{
-ImputeMissingGeno(dmat = NULL, uniform=TRUE)
+imputemissinggeno(x, uniform=TRUE)
 }
 \arguments{
-  \item{dmat}{
+  \item{x}{
 An object of class \code{\link{dmdata}} which contains the genotype data in 0/1 form and any 
 missing marker genotypes.
 }
@@ -21,7 +21,7 @@ will be uniform, otherwise, see below.
 }
 }
 \details{
-\code{ImputeMissingGeno} is used in \code{\link{DeletionMapping}} routine for imputing missing genotypes. 
+\code{imputemissinggeno} is used in \code{\link{DeletionMapping}} routine for imputing missing genotypes. 
 
 When \code{uniform} is \code{TRUE}, the imputation of the missing genotypes (0,1) is uniform. 
 
@@ -53,10 +53,10 @@ class(Slist[["missing"]])
 
 
 # impute missing genotypes where 0,1 are equally likely
-ImputeMissingGeno(Slist[["missing"]])[,]
+imputemissinggeno(Slist[["missing"]])[,]
 
 # impute missing genotypes conditional on flanking genotypes. 
-ImputeMissingGeno(Slist[["missing"]], uniform=FALSE)[,]
+imputemissinggeno(Slist[["missing"]], uniform=FALSE)[,]
 
 }
 
