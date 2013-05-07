@@ -1,5 +1,5 @@
-\name{imputemissinggeno}
-\alias{imputemissinggeno}
+\name{impute}
+\alias{impute}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 Impute Missing Marker Genotypes
@@ -8,7 +8,7 @@ Impute Missing Marker Genotypes
 This function imputes any missing marker genotypes.  
 }
 \usage{
-imputemissinggeno(x, uniform=TRUE)
+impute(x, uniform=TRUE)
 }
 \arguments{
   \item{x}{
@@ -21,7 +21,7 @@ will be uniform, otherwise, see below.
 }
 }
 \details{
-\code{imputemissinggeno} is used in \code{\link{DeletionMapping}} routine for imputing missing genotypes. 
+\code{impute} is used in \code{\link{DeletionMapping}} routine for imputing missing genotypes. 
 
 When \code{uniform} is \code{TRUE}, the imputation of the missing genotypes (0,1) is uniform. 
 
@@ -53,10 +53,10 @@ class(Slist[["missing"]])
 
 
 # impute missing genotypes where 0,1 are equally likely
-imputemissinggeno(Slist[["missing"]])[,]
+impute(Slist[["missing"]])[,]
 
 # impute missing genotypes conditional on flanking genotypes. 
-imputemissinggeno(Slist[["missing"]], uniform=FALSE)[,]
+impute(Slist[["missing"]], uniform=FALSE)[,]
 
 }
 
