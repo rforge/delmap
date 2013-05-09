@@ -1,5 +1,5 @@
-\name{sim.map}
-\alias{sim.map}
+\name{sim.dmmap}
+\alias{sim.dmmap}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 Simulate marker map
@@ -8,7 +8,7 @@ Simulate marker map
 Simulate the positions of marker loci on a marker map
 }
 \usage{
-sim.map(len=rep(100,20), n.mar=10, eq.spacing=FALSE)
+sim.dmmap(len=rep(100,20), n.mar=10, eq.spacing=FALSE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -43,7 +43,7 @@ See Also \code{\link{sim.dmdata}}
 \examples{
 # simulate 10 chromosomes of differing lengths but each with 10 
 # marker loci
-map <- sim.map(c(100,90,80,40,40,50,120,200,150,180), 10)
+map <- sim.dmmap(c(100,90,80,40,40,50,120,200,150,180), 10)
 
 map
 

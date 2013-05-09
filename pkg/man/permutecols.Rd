@@ -8,19 +8,19 @@ Change Order of Marker Columns
 \code{permutecols} column permutes the deletion data for each chromosome. 
 }
 \usage{
-permutecols(x= NULL)
+permutecols(x)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{x}{
-An object of class \code{\link{dmdata}}
+An object of class \code{\link{dmdata}}.
 }
 }
 \details{
-\code{permutecols} permutes, randomly, the order of the columns of genotype data.
+\code{permutecols} permutes, randomly, the order of the columns of genotype data. 
 }
 \value{
-An object of class \code{\link{dmdata}}.
+An object of class \code{\link{dmdata}} which the marker/column order permuted. 
 }
 \author{
 Andrew W George

@@ -1,25 +1,30 @@
 export (
        as.dmdata, 
+       as.dmdatachrm, 
        as.dmdist,
-       CleanData, 
-       Collapse,
-       DeletionMapping,
-       IdentifyMarkerBlocks,
-       ImputeMissingGeno,
+       dmplot,
+       cleandata, 
+       dmapping,
+       dmappingchrm,
+       idmarkerblocks,
+       idmarkersuborder,
+       impute,
        is.dmdata,
+       is.dmdatachrm,
        is.dmdist,
        sim.dmdata,
        sim.dmmap,
        CreateDistMatrix,
-       IdentifyMarkerOrd,
-       PermuteCols,   
-       read.dmdata,
-       read.dmmap,
+       permutecols,   
+       read.files,
        RearrangeDist)
 S3method(as.dmdata, matrix)
+S3method(as.dmdata, dmdatachrm)
+S3method(as.dmdata, list)
+S3method(as.dmdatachrm, matrix)
 S3method(as.dmdist, list)
 S3method(print, dmdata)
+S3method(print, dmdatachrm)
 S3method(print, dmdist)
-S3method(plot, dmdata)
 importFrom(fields, two.colors)
 import(seriation, TSP)

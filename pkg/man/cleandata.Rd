@@ -5,15 +5,14 @@
 Clean Data 
 }
 \description{
-\code{cleandata} removes those rows and columns that do not carry any deletions. See \code{details} for 
-impact of NAs.
+Cleans the data by removing rows/columns that will not contribute any information to deletion mapping. 
 }
 \usage{
-cleandata(dmdat= NULL, ignoreNA=FALSE)
+cleandata(x= NULL, ignoreNA=FALSE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{dmdat}{
+  \item{x}{
 An object of class \code{\link{dmdata}}
 }
   \item{ignoreNA}{
@@ -23,9 +22,9 @@ removed if it has no deletions. Rows are removed first, followed by columns.
 }
 }
 \details{
-When \code{ignoreNA} is TRUE, row and columns that do not carry any deletions are removed. 
+When \code{ignoreNA} is \code{TRUE}, row and columns that do not carry any deletions are removed. 
 
-When \code{ignoreNA} is FALSE, first rows that do not carry any deletions are removed. Then, of the remaining
+When \code{ignoreNA} is \code{FALSE}, first rows that do not carry any deletions are removed. Then, of the remaining
 deletion data, those columns that carry no deletions and have no NAs are also removed.  
 Here, the assumption is that if a plant(row) has no recorded 
 deletions, then it is unlikely that the NA's are deletions.  
@@ -37,7 +36,7 @@ An object of class \code{\link{dmdata}}.
 Andrew W George
 }
 \seealso{
-\code{\link{read.dmdata}}, \code{\link{ImputeMissingGeno}}, \code{\link{Collapse}}
+\code{\link{read.files}}, \code{\link{impute}}
 }
 \examples{
 # generate map for a single chromosome with 20 equally distant marker loci
@@ -52,8 +51,7 @@ nrow(Slist[["missing"]])
 
 
 # Clean data but where NAs affect which rows/columns are removed
-a <- cleandata(Slist[["missing"]])
-a[,] #print data matrix
-nrow(a)
+cleandata(Slist[["missing"]])
+
 
 }

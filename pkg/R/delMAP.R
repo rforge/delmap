@@ -12,7 +12,7 @@
 ##         plot of all orderings
 ## To Do
 ##   1. code to bin markers with cor=1 and no missing genotypes. 
-##   2. sort out missing genotypes and CleanData - ignore ?
+##   2. sort out missing genotypes and cleandata - ignore ?
 
 
   
@@ -52,7 +52,7 @@ Sort <- function(dmat = NULL, n = 1000)
 {
 
 
-    cbest <- CleanData(dmat)
+    cbest <- cleandata(dmat)
     dbest <- CreateDistMatrix(cbest[,])
     lbest <- criterion(dbest, method="Path_length")[1]
     obest <- seriate(dbest, method="TSP", control=list(method="2-opt"))
@@ -273,11 +273,11 @@ UniqueCols <- function(mat) {
       mis.indx <- mat.indx[ sample(1:nrow(mat.indx),
                             round(nrow(deldat)*ncol(deldat)*p.missing),replace=T),]
       mis.deldat[mis.indx] <- NA
-      class(mis.deldat) <- "dmdata"
-      attr(mis.deldat, "imputed") <- NA
+      class(mis.deldat) <- "dmdatachrm"
+      attr(mis.deldat, "imputed") <- which(is.na(mis.deldat), arr.ind=TRUE)
     }
 
-    class(deldat) <- "dmdata"
+    class(deldat) <- "dmdatachrm"
     attr(deldat, "imputed") <- NA
     ifelse( is.null(p.missing),
        res <- list(nomissing=deldat),
@@ -288,38 +288,38 @@ UniqueCols <- function(mat) {
 
 
 
-  ## clean data
-  cleandata <- function(dat, file, names.pres )
-  {
-    ## Internal function
-    ## Purpose: to identify delation, give a summary of the data read
-    ## Args:    dat  data frame 
-    ##          file containing file name
-    ##          names.pres logical for whether the labels are supplied or to be generated
-    ## Outputs:  data matrix of type "dmdata" with marker & line names
-    ##           and recoded genotypes to be 1,0, NA
-
-
-  genos <- as.vector(table(dat))
-  nodelgeno <- names(table(dat))[which(genos== max(genos))]
-  delgeno <- names(table(dat))[which(genos == min(genos))]
-
-  cat("\n\n")
-  cat(" Deletion data has been read in from the file:", file, "\n")
-  cat(" The original data contains: \n")
-  cat("        ",  nrow(dat), " rows (lines) \n")
-  cat("        ",  ncol(dat), " columns (marker loci) \n")
-  cat("        ",  round(sum(is.na(dat))/(nrow(dat)*ncol(dat)), 2), "% of the genotypes are missing\n")
-  cat("         Deletions are assumed to be of genotype ", delgeno, "\n")
-  cat("         Non-deletions are assumed to be of genotype", nodelgeno, "\n")
-
-  ## recode deletion data to be 0/1 data
-  recoded.dat <- matrix(data=0, nrow=nrow(dat), ncol=ncol(dat))
-  recoded.dat[which(dat==delgeno, arr.ind=T)] <- 1
-  recoded.dat[is.na(dat)] <- NA
-
-  return(recoded.dat)
-  }  ## end function 
+#  ## clean data
+#  cleandata <- function(dat, file, names.pres )
+#  {
+#    ## Internal function
+#    ## Purpose: to identify deletion, give a summary of the data read
+#    ## Args:    dat  data frame 
+#    ##          file containing file name
+#    ##          names.pres logical for whether the labels are supplied or to be generated
+#    ## Outputs:  data matrix of type "dmdata" with marker & line names
+#    ##           and recoded genotypes to be 1,0, NA
+#
+#
+#  genos <- as.vector(table(dat))
+#  nodelgeno <- names(table(dat))[which(genos== max(genos))]
+#  delgeno <- names(table(dat))[which(genos == min(genos))]
+#
+#  cat("\n\n")
+#  cat(" Deletion data has been read in from the file:", file, "\n")
+#  cat(" The original data contains: \n")
+#  cat("        ",  nrow(dat), " rows (lines) \n")
+#  cat("        ",  ncol(dat), " columns (marker loci) \n")
+#  cat("        ",  round(sum(is.na(dat))/(nrow(dat)*ncol(dat)), 2), "% of the genotypes are missing\n")
+#  cat("         Deletions are assumed to be of genotype ", delgeno, "\n")
+#  cat("         Non-deletions are assumed to be of genotype", nodelgeno, "\n")
+#
+#  ## recode deletion data to be 0/1 data
+#  recoded.dat <- matrix(data=0, nrow=nrow(dat), ncol=ncol(dat))
+#  recoded.dat[which(dat==delgeno, arr.ind=T)] <- 1
+#  recoded.dat[is.na(dat)] <- NA
+#
+#  return(recoded.dat)
+#  }  ## end function 
 
 
 
@@ -380,6 +380,236 @@ l1Dist <- function(x, y, i=1) {
 }
 
 
+i.order <- function(x)
+{
+ ## internal function
+ ## ARgs:
+ ##      x  of class dmdatachrm
+ ## Output
+ ##      object of class "ser_permutation" "list"  
+
+  ## Order rows/lines based on deletion pattern
+  d <- x
+  class(d) <- "matrix"
+  sord <- seriate(d, method="BEA")
+
+  return(sord)
+
+}
+
+
+i.getorder <- function(x, blocks, sord   )
+{
+ ## internal function
+ ## Args:
+ ##    x      an object of class dmdatachrm
+ ##    blocks  a named integer vector. Elements of vector give which block
+ ##            marker loci belong in. 
+ ##    sord   an object of type "ser_permutation" and "list"
+ ## Outputs
+ ##    list object. Each element a named interger vector. The elements
+ ##    of the vector give which marker loci are the same.
+
+ # create results structure
+ list.orders <- list(blocks=blocks, orders=list())
+
+ for( jj in unique(blocks) )
+  {
+
+     cindx <- which(blocks==jj)
+     if(length(cindx)==1)
+     {
+      list.orders$orders[[jj]] <- 1
+      names(list.orders$orders[[jj]]) <- names(blocks)[cindx]
+     } else {
+     dat <- x[, cindx]
+     ## determine: change in number of deletions across loci
+     num.deletions <- colSums( dat[get_order(sord[1]),]   )
+     change.in.number.of.deletions  <- rep(FALSE, ncol(dat)-1)
+     for(ii in 2:ncol(dat))
+        if( abs(num.deletions[ii] - num.deletions[ii-1]) > 0)
+            change.in.number.of.deletions[ii-1] <- TRUE
+
+     ## determine: change in lines with deletions
+     change.in.lines.with.deletions <- rep(FALSE, ncol(dat)-1)
+     for(ii in 2:ncol(dat))
+          if( any((dat[,ii-1] + dat[,ii])==1) )
+              change.in.lines.with.deletions[ii-1] <- TRUE
+
+     ## if 0, then false false and marker not uniquely positioned
+     col.sums <-  colSums(  matrix( data= c(change.in.number.of.deletions,
+                          change.in.lines.with.deletions), byrow=T, nrow=2) )
+
+     ## identify markers that cannot be uniquely positioned. 
+     indx <- 1
+     orderings <- rep(0, ncol(dat))
+     orderings[1] <- indx
+     for(ii in 2:ncol(dat))
+     {
+       if( col.sums[ii-1] != 0)
+            indx <- indx + 1
+       orderings[ii] <- indx
+     }
+     list.orders$orders[[jj]] <- orderings
+     names(list.orders$orders[[jj]]) <- colnames(x)[cindx]
+     } ## end if else
+    } ## end jj
+  return(list.orders)
+} ## end internal function
+
+
+i.dmplot.check <- function(x, chrm)
+{
+  ## internal function to do some checks for dmplot
+  if (!is.dmdata(x)  ) stop("Object not of class  dmdata")
+
+  if(!is.null(chrm))
+  {  ## chrm have been specified 
+      ## do some checks
+      if (!is.numeric(chrm) & !is.integer(chrm))
+         stop(" chrm must be either numeric or an integer vector.")
+      if (any(chrm < 1 | chrm > attributes(x)$nchrm))
+         stop(" chrm must be an integer vector between 1 and the number of chromosomes.")
+  } ## end is.null
+
+}
+
+
+i.open.graphics <- function()
+{
+ if(.Platform$OS.type=="unix")
+    X11()
+  else {
+     windows() 
+  }
+}
+
+
+i.dmplot.setup <- function(x, ch, main)
+{
+  dimc <- ncol(x)
+  dimr <- nrow(x)
+  plot(x, xlim = c(1, dimc), ylim = rev(c(1, dimr)), xlab = "",
+           ylab = "", type = "n", axes = FALSE, frame = TRUE, bty="n", oma=c(1,1,1,1))
+  segments(x0 = 0.5:(dimc + 0.5), y0 = 0.5, y1 = max(dimr) + 0.5, col="grey")
+  segments(x0 = 0.5, y0 = 0.5:(dimr + 0.5), x1 = max(dimc) + 0.5, col="grey")
+  axis(2, 1:dimr, dimnames(x)[[1]], cex.axis = 0.5, las = 1, mgp=c(0,0.5,-0.5)) ## plant axis
+
+
+  if (!is.null(main)) 
+           title.txt <- paste(main, ": Chromosome ", ch, sep="")
+  else {
+           title.txt <- paste(" Chromosome ", ch, sep="")
+  }
+  title(main = title.txt, line = 3)
+}
+
+i.dmplot.markeraxis <- function(x)
+{
+   ## internal function write out B & W or colored marker labels
+
+    if(any(is.na(x)))
+       axis(3, 1:ncol(x), dimnames(x)[[2]], cex.axis = 0.5, las = 3, mgp=c(0,1,0)) ## b&w marker axis
+     else {
+       ## produces a colour deletion mapping plot where like markers have the 
+       ## same colour and missing obs are colored differently. 
+
+       ## assign a unique colour only if marker order index is unique
+       a <- idmarkersuborder(as.dmdatachrm(x)) ## list with blocks and orders
+       # assigning a unique index based on assumption that there will never be more than
+       # 10000 blocks 
+       offset <- 10000 * a$blocks
+       mrkord <- offset + unlist(a$orders)
+       # assign a colour to each mrk order but only a new colour if mrkord changes in value
+       colourindx <- (as.integer(as.factor(mrkord)) %% 3)  + 1
+       colpallet <- c("red","grey","black")
+       colmarkers <-   colpallet[colourindx]
+
+
+       axis(3, 1:ncol(x), labels=FALSE, cex.axis = 0.5, las = 3, mgp=c(0,1,0))
+       at = 1:ncol(x)
+       mtext(side = 3, text = dimnames(x)[[2]], at = at, col = colmarkers, line = 1, cex=0.5,
+           las = 2)  ## axis for markers
+      }
+}
+
+
+i.dmplot.blocks <- function(x)
+{
+  ## internal function for drawing block structure onto plot
+
+    ## id blocks and draw segments
+    y <- unlist(idmarkerblocks(as.dmdata(x)))
+    ## findInterval does not work when block numbers of not increasing. 
+    ## as a fudge, I create a dummy variable for the block numbers that is increasing
+    ## but also keep track of the original block numbers so that I can print out the originals. 
+
+
+    ## create dummy variable where block numbers are increasing (without doing any reordering of columns)
+    counter <- 1
+    d <- rep(NA, length(y))
+    d[1] <- counter
+    record.of.blockindx <- y[1]
+    for(ii in 2:length(y))
+    {
+             if(y[ii-1] != y[ii])
+             {
+               record.of.blockindx <- c(record.of.blockindx, y[ii])
+               counter <- counter + 1
+               d[ii] <- counter
+             } else {
+               d[ii] <- counter
+             } ## end if else
+    }   ## end for 
+
+    ## nice bit of code by James T. to find the intervals but it only works for 
+    ## integer arrays that are increasing in value  
+    t <- c(0, findInterval(unique(d), d))
+    segments(x0 = t + 0.5, y0 = 0.5, y1 = nrow(x) + 0.5)
+    axis(1, (t[-length(t)] + t[-1])/2, sprintf("B%d", record.of.blockindx),
+    las = 3, tick = FALSE, mgp=c(0,0,0),cex.axis = 0.75)
+}
+
+
+   
+i.dmapping.tidy <- function(res)
+{
+     ## internal function for dmapping to tidy up final results
+
+       final <- list()
+ 
+#       ## Moving any columns with no deletions to the end of the bestx
+#       indx <-  which(colSums(bestx)==0)
+#       if(length(indx) > 0){
+#            arr.ind <-  attr(bestx, "imputed")  ## need this otherwise it is lost 
+#            mrk <- c( colnames(bestx[, -indx]), colnames(bestx[, indx])) 
+#            mrk.ord <-  c(seq(1,ncol(bestx))[-indx], seq(1,ncol(bestx))[indx])
+#            bestx <- bestx[, mrk.ord]
+#            attr(bestx, "imputed") <-  cbind(arr.ind[,1], match(arr.ind[,2],  mrk.ord))
+#       }
+
+       ## saving matrix of imputed data locations
+       arr.ind <- attr(res[["bestx"]], "imputed")   ## need this otherwise it is lost 
+
+
+       ## removing "cut" from bestx
+       indx <-  which(colnames(res[["bestx"]])=="cut")
+       res[["bestx"]] <- res[["bestx"]][,-indx]
+
+       ## adding imputed data locations
+       attr(res[["bestx"]], "imputed") <- arr.ind
+
+       ## class
+       res[["bestx"]] <- as.dmdatachrm(res[["bestx"]]) 
+
+       ## only keep certain elements of res
+       final[["bestx"]] <- res[["bestx"]]
+       final[["bestt"]] <- res[["bestt"]]
+       final[["besttvec"]] <- res[["besttvec"]]
+       if(!is.null(res[["bestdist"]])) final[["bestdist"]] <- res[["bestdist"]]
+
+       return(final)
+} 
 
 ####----------------------------------##
 ##   EXTERNAL FUNCTION DECLARATION  ##
@@ -387,12 +617,193 @@ l1Dist <- function(x, y, i=1) {
 
 
 
+as.dmdist.list <- function(x)
+{
+# convert list object into dmdist object. 
+# list object must have four elements
+# checks
+  if(length(x) != 4) stop("List is of incorrect length. Must be of length 4")
+  if(!(is.numeric(x[[1]]) & is.numeric(x[[2]]) & is.numeric(x[[3]]) & is.numeric(x[[4]])))  
+          stop("Elements of list must be numeric")
+
+   res <- list("nrefblocks"=x[[1]], "nobsblocks"=x[[2]], "mindist"=x[[3]], "minwrong"=x[[4]])
+   class(res) <- "dmdist"
+   res
+}
+
+
+is.dmdata <- function(x) 
+  inherits(x, "dmdata")
+
+is.dmdatachrm <- function(dmat) 
+  inherits(dmat, "dmdatachrm")
+
+
+as.dmdata <- function(x) 
+  UseMethod("as.dmdata")
+
+as.dmdatachrm <- function(x) 
+  UseMethod("as.dmdatachrm")
+
+as.dmdata.default <- function(x)
+{
+  if(is.dmdata(x) | is.dmdatachrm(x) | is.list(x))
+     x
+  else
+    {
+      stop(" Only objects of type matrix, list, or dmdatachrm can be converted into dmdata objects.")
+      NULL
+    } 
+}
+
+
+as.dmdatachrm.default <- function(x)
+{
+  if(is.dmdatachrm(x))
+     x
+  else
+    {
+      stop(" Only objects of type matrix can be converted into dmdatachrm objects.")
+      NULL
+    }
+
+}
+
+
+
+
+
+is.dmdist <- function(y) 
+   inherits(y, "dmdist")
+
+as.dmdist <- function(x) 
+   UseMethod("as.dmdist")
+
+as.dmdist.default <- function(x)
+{
+ if(is.dmdist(x))
+    x
+ else
+    {
+    stop(" Object not of list type to be converted into a dmdist object.")
+    NULL
+    }
+}  ## end function
+
+
+
+as.dmdatachrm.matrix <- function(x)
+{
+
+  # convert matrix object into dmdatachrm object.
+  # matrix is given generic marker and line names if col and row names are null.
+  # marker loci assumed to belong to the same chromosome
+
+  # checks
+  if(ncol(x) < 2) stop("Matrix must contain more than a single column.")
+  if(nrow(x) < 2) stop("Matrix must contain more than a single row.")
+  if(length(unique(as.vector(x))[!is.na(unique(as.vector(x)))]) > 2) stop("Matrix contains more than two unique genotypes.")
+
+  # convert matrix scores into 0/1 where we assume deletions are least prevalent. 
+  mode(x) <- "factor"
+  mode(x) <- "numeric" ## trick to give me numbers
+  t <- table(x)
+  if(t[1] > t[2] )
+  {
+     x[which(x== as.numeric(names(t[1])), arr.ind=TRUE)] <- 0
+     x[which(x== as.numeric(names(t[2])), arr.ind=TRUE)] <- 1
+  } else {
+     x[which(x== as.numeric(names(t[2])), arr.ind=TRUE)] <- 0
+     x[which(x== as.numeric(names(t[1])), arr.ind=TRUE)] <- 1
+ }
+
+  ## create generic marker names
+  if(is.null(colnames(x))) colnames(x) <- paste("M", 1:ncol(x), sep="")
+
+  ## abbreviate line names
+  if(is.null(rownames(x))) rownames(x)  <- paste("L", 1:nrow(x), sep="")
+
+  ## add additional attribute for row,column location of imputed genotypes 
+  if(is.null(attributes(x)$imputed))
+  {
+    if(any(is.na(x)))
+          attr(x, "imputed") <- which(is.na(x), arr.ind=TRUE)
+     else {
+       attr(x,"imputed") <- NA
+     }
+  }
+  ## give class to element of y
+  class(x) <- "dmdatachrm"
+  return(x)
+}
+
+
+
+
+as.dmdata.matrix <- function(x)
+{
+  # convert matrix object into dmdata object.
+  # markers are assumed to belong on a single chromosome 
+
+  y <- vector("list", 1)  # list with a single element
+  names(y) <- "1"  ## chromosome number
+
+  y[[1]] <- as.dmdatachrm(x)  ## assigns structure of class dmdatachrm
+    
+  ## add attribute for number of chromosomes
+  attr(y, "nchrm") <- 1
+
+  # new class of object where object contains matrix data with special attributes
+  class(y) <- "dmdata"
+
+  y
+}
+
+
+as.dmdata.dmdatachrm <- function(x)
+{
+  # convert dmdatachrm object into dmdata object.
+  # markers are assumed to belong on a single chromosome 
+
+  ynew <- vector("list", 1)  # list with a single element
+  names(ynew) <- "1"  ## chromosome number
+
+  ynew[[1]] <- x  ## assigns structure of class dmdatachrm
+
+  ## add attribute for number of chromosomes
+  attr(ynew, "nchrm") <- 1
+
+  # new class of object where object contains matrix data with special attributes
+  class(ynew) <- "dmdata"
+
+  ynew
+}
+
+
+as.dmdata.list <- function(x)
+{
+  # convert list object with elements of class dmdatachrm into 
+  # a dmdata object.
+
+  for(ch in 1:length(x))
+   if(!is.dmdatachrm(x[[ch]])) stop(" The elements of this list must be of class dmdatachrm.")
+
+  y <- vector("list", length(x))
+  names(y) <- as.character(1:length(x))
+  y <- x
+  class(y) <- "dmdata"
+  attr(y, "nchrm") <- length(x)
+  return(y) 
+}
+
+
 sim.dmdata <- function(numlines=NULL, plines=0.5, map=NULL, numblocks=1, Enumdel=4, 
-                         p.missing=0.05, seed=NULL)
+                         p.missing=0, seed=NULL)
 {
 
   ## Purpose:        to simulate deletion data.
-  ## Functionality:  Generates a 2-dimensional array. The rows are the plant lines and 
+  ## Functionality:  Generates a 2-dimensional array for each chromosome in the marker map.
+  ##                 The rows are the plant lines and 
   ##                 the columns are the genetic marker loci. The array contains marker 
   ##                 gentoypes 1/0 where 1 denotes a deletion (absent) and 0 denotes 
   ##                 a non-deletion (present).  
@@ -415,8 +826,21 @@ sim.dmdata <- function(numlines=NULL, plines=0.5, map=NULL, numblocks=1, Enumdel
   ##-------------------##
 
   if(is.null(numlines)) stop(" Must specify number of lines.")
-  if(is.null(map)) stop(" Must specify map. Use sim.dmmap to create a generic map.")
+  if(!all.equal(numlines, as.integer(numlines))) stop(" numlines must be an integer number.\n")
+  if(is.null(map)) cat(" Data will be generated where all marker loci are assumed to be on the same chromosome.\n")
   if(numlines < 1) stop(" Must have an integer number of lines.") 
+  if(is.null(map)) {
+        cat(" Must either specify a map or specify the number of marker loci. If the number of marker loci \n")
+        cat(" is specified, then it is assumed that these loci belong to the same chromosome.\n")
+        stop(" sim.dmdata has stopped with errors in the parameter statement.\n")
+   }
+
+
+  if(p.missing <0 | p.missing > 1) stop(" p.missing must be a probability between 0 and 1.\n")
+  if(numblocks < 1) stop(" numblocks must be a positive integer.\n")
+  if(!all.equal(numblocks, as.integer(numblocks))) stop(" numblocks must be an integer number.\n")
+   if(Enumdel < 2) stop(" Enumdel must be a number  greater than 1.\n")
+
   ## set seed if not null
   if(!is.null(seed)) set.seed(seed)
 
@@ -424,6 +848,10 @@ sim.dmdata <- function(numlines=NULL, plines=0.5, map=NULL, numblocks=1, Enumdel
   dm <- list("missing"= vector("list", length(map)), "nomissing"=vector("list", length(map)))
   names(dm[["missing"]]) <- as.character(1:length(map))
   names(dm[["nomissing"]]) <- as.character(1:length(map))
+
+  ## simulate dummy map if map is integer number
+  if(is.integer(map)) map <- sim.dmmap(100, map) 
+
 
   for(ch in 1:length(map))
   {  
@@ -467,27 +895,49 @@ sim.dmdata <- function(numlines=NULL, plines=0.5, map=NULL, numblocks=1, Enumdel
   
         res <- add.missing.deldat(p.missing, deldat) 
 
-        dmdat.miss <- cbind(dmdat.miss, as.matrix(res[[1]]))
-        dmdat.full <- cbind(dmdat.full, deldat)
+        dmdat.miss <- cbind(dmdat.miss, as.matrix(res[[2]]))
+        dmdat.full <- cbind(dmdat.full, as.matrix(res[[1]]))
      } ## end for jj in 1:numblocks 
 
-     dm[["missing"]][[ch]] <- as.dmdata(dmdat.miss)
-     dm[["nomissing"]][[ch]] <- as.dmdata(dmdat.full)
+     dm[["missing"]][[ch]] <- as.dmdatachrm(dmdat.miss)
+     dm[["nomissing"]][[ch]] <- as.dmdatachrm(dmdat.full)
 
   } ## end for
+
+  dm[["missing"]] <- with(dm, as.dmdata(missing))
+  dm[["nomissing"]] <- with(dm, as.dmdata(nomissing))
+
 
  
    return(dm)
 
 }  ## end function  sim.dmdata
 
-print.dmdata <- function(x, ...)
+print.dmdatachrm <- function(x, ...)
 {
   cat(" A summary of this object is: \n\n")
   cat(" The (recoded) deletion data are: \n")
   write.it(x)
   write.mrknames(x)
   write.linenames(x)
+} ## end function print.dmdata
+
+
+
+print.dmdata <- function(x, ...)
+{
+  cat(" A summary of this object is: \n\n")
+  cat( " Object contains ",attributes(x)$nchrm,"chromosomes. \n")
+
+  for(ch in 1:attributes(x)$nchrm)
+  {
+     cat(" \n\n  CHROMOSOME ", ch, "\n")
+     cat(" -----------------\n")
+     cat(" The (recoded) deletion data are: \n")
+     write.it(x[[ch]])
+     write.mrknames(x[[ch]])
+     write.linenames(x[[ch]])
+  }
 } ## end function print.dmdata
 
 
@@ -502,482 +952,387 @@ print.dmdist <- function(x, ...)
 } ## end function 
 
 
-CreateDistMatrix <- function(dmat=NULL)
+CreateDistMatrix <- function(x=NULL)
 {
 ## Purpose:  Use Manhattan distance measure on marker loci (columns)
 ## Args:     matrix or dmdata object
 ## Return:   distance object for deletion data
 
-   if(is.dmdata(dmat)){
-     class(dmat) <- "matrix"
+   if(is.dmdatachrm(x)){
+     class(x) <- "matrix"
    } else {
-    if(is.matrix(dmat))
+    if(is.matrix(x))
     {
-      dmat <- as.dmdata(dmat)
-    } else stop(" Object must be of type matrix or dmdata.")
+      x <- as.dmdatachrm(x)
+    } else stop(" Object must be of type matrix or dmdatachrm.")
    }
-   if(any(is.na(dmat))) stop("NA values not allowed when calculating distances.")
+   if(any(is.na(x))) stop("NA values not allowed when calculating distances.")
 
 
-    return(dist(t(dmat), method="manhattan"))
+    return(dist(t(x), method="manhattan"))
 
 } ## end function CreateDistMatrix
 
 
-CleanData <- function(dmap=NULL, ignoreNA=FALSE)
+
+
+cleandata <- function(x=NULL, ignoreNA=FALSE)
 {
-  ## Purpose:   CleanData 
+  ## Purpose:   cleandata 
   ##            Removing of noninformative rows/columns.
   ##            If ignoreNA=TRUE, rows and columns are removed without regard to NA's if they carry no deletions
   ##            IF ignoreNA=FALSE, only rows without deletions and/or columns with no NA's and 
   ##            no deletions are removed. That is, a column is only removed if it carrys no deletions and has 
   ##            no NA's 
-    if (!is.dmdata(dmap)) 
-        stop("Error! object not of class dmdata")
-    indx <- which(is.na(dmap), arr.ind = TRUE)
-
-    arr.ind <- attr(dmap, "imputed")
-
-    if(ignoreNA)
-    { ## ignoring NA's 
-     indx <- which(rowSums(dmap, na.rm=TRUE) == 0) 
-     if(length(indx) > 0) dmap <- dmap[-indx,]
-     indx <- which(colSums(dmap, na.rm=TRUE)==0)
-     if(length(indx) > 0) dmap <- dmap[, -indx]
-    }  else {
-      ## taking NA's into account in the count
-     indx <- which(rowSums(dmap, na.rm=TRUE) == 0 )
-     if(length(indx) > 0) dmap <- dmap[-indx,]
-     indx <- which(colSums(dmap, na.rm=TRUE) == 0 & colSums(is.na(dmap)) ==0)
-     if(length(indx) > 0) dmap <- dmap[,-indx]
-    }     
-
-    class(dmap) <- "dmdata"
-    attr(dmap, "imputed") <- arr.ind
-
-    dmap 
-
-}  ## CleanData
+  ##  
+  ## Works on dmdata. It will return a cleaned object of the same type
 
 
+  if (!is.dmdata(x)  )
+        stop("Object not of class dmdata")
+
+
+  for(ch in 1:attributes(x)$nchrm)  ## indexed over chromosomes
+  {
+     indx <- which(is.na(x[[ch]]), arr.ind = TRUE)
+
+     if(ignoreNA)
+     { ## ignoring NA's 
+           indx <- which(rowSums(x[[ch]], na.rm=TRUE) == 0) 
+           if(length(indx) > 0) x[[ch]] <- x[[ch]][-indx,]
+           indx <- which(colSums(x[[ch]], na.rm=TRUE)==0)
+           if(length(indx) > 0) x[[ch]] <- x[[ch]][, -indx]
+     }  else {
+            ## taking NA's into account in the count
+           indx <- which(rowSums(x[[ch]], na.rm=TRUE) == 0 )
+           if(length(indx) > 0) x[[ch]] <- x[[ch]][-indx,]
+           indx <- which(colSums(x[[ch]], na.rm=TRUE) == 0 & colSums(is.na(x[[ch]])) ==0)
+           if(length(indx) > 0) x[[ch]] <- x[[ch]][,-indx]
+     }  ## end if else     
+
+     class(x[[ch]]) <- "dmdatachrm"
+     if(any(is.na(x[[ch]])))
+              attr(x[[ch]], "imputed") <- which(is.na(x[[ch]]), arr.ind=TRUE)
+     else {
+              attr(x[[ch]], "imputed") <- NA
+     } ## if else
+  }  ## end for
+
+  return(x)
+}  ## cleandata
 
 
 
 
-PermuteCols <- function(dmat=NULL)
+
+
+permutecols <- function(x)
 {
- if(class(dmat) != "dmdata") stop("Error! object not of class dmdata")
+  if (!is.dmdata(x)  )
+     stop("Object not of class  dmdata")
 
-  cl <- class(dmat)
-  ## permute columns
-  indx <- sample(1:ncol(dmat), ncol(dmat), replace=F)
-  a <- dmat[, indx]
-  class(a) <- cl
-  attr(a, "imputed") <- NA
-  a
+  # create new structure for results
+  res <- vector("list", attributes(x)$nchrm)
+  names(res) <- as.character(1:attributes(x)$nchrm)
+  # permute cols of each chromosome 
+  for(ch in 1:attributes(x)$nchrm)  ## indexed over chromosomes
+  {
+     cl <- class(x[[ch]])
+     ## permute columns
+     indx <- sample(1:ncol(x[[ch]]), ncol(x[[ch]]), replace=F)
+     a <- x[[ch]][, indx]
+     res[[ch]] <- as.dmdatachrm(a)
+  }
+  # turning res into dmdata object
+  class(res) <- "dmdata"
+  attr(res, "nchrm") <- attributes(x)$nchrm
+
+  return(res)
 }
 
 
 
-IdentifyMarkerBlocks <- function(dmat = NULL)
+i.getblocks <- function(x)
+{
+ ## internal function
+ ## Args:  
+ ##      x  object of class dmdatachrm
+ ## Outputs:
+ ##      named integer vector giving blocking indexes
+
+   ## initialization of variables
+   marker.groupings <- rep(FALSE, ncol(x)-1)
+   res <- rep(NA, ncol(x))
+   zeroblockindx <- NULL
+
+   ## Determining separate groupings of markers
+   for(ii in 2:ncol(x))
+      if (x[,ii-1] %*% x[, ii] > 0)
+          marker.groupings[ii-1] <-  TRUE
+
+    if(sum(x[,1])==0) {
+       zeroblockindx <- 1
+       blockindx <- 1
+       res[1] <- zeroblockindx
+     } else {
+       blockindx <- 1
+       res[1] <- blockindx
+     }
+   for(ii in 2:ncol(x))
+   {
+      if(sum(x[,ii])==0){
+         if(is.null(zeroblockindx)) {
+           # zeroblock indx not set yet
+           zeroblockindx <- blockindx + 1
+           blockindx <- blockindx + 1
+          }
+         res[ii] <- zeroblockindx
+       } else {
+        if(!marker.groupings[ii-1])
+            blockindx <- blockindx + 1
+        res[ii] <- blockindx
+      }
+   }
+   names(res) <- colnames(x)
+
+   return(res)
+}  ## end internal function
+
+
+
+
+
+
+
+idmarkerblocks <- function(x)
 {
   ## Purpose:  to identify separate blocks of markers. 
   ##           In doing this, I am assuming that the data is 
   #            in the true ordering. Some patterns of deletion data
   ##           can lead to independent blocks of markers being formed.
   ##           These blocks can be in different orders. 
-  ## Args:     dmat -  matrix of deletion data in true marker order
-  ## Returns:  integer vector of blocks
+  ## Args:     x  -  a dmdatachrm  or dmdata object  
+  ## Returns:  named integer vector of blocks if x is of type dmdatachrm. If 
+  ##           x is of type dmdata, then a list with named interger elements is returned. 
   ##
-  ## Note:     All columns with no deletions are assigned to be frome the same block
+  ## Note:     All columns with no deletions are assigned to be from the same block
   ##           NA's not allowed
 
 
-  if(any(is.na(dmat))) stop("Error.  NA's not allowed.")
-  if(!is.dmdata(dmat)) stop("Error.  Object must be of class dmdata.")
+  if(any(is.na(x))) stop("Error.  NA's not allowed.")
+  if (!is.dmdata(x) & !is.dmdatachrm(x)  )
+     stop("Object not of class dmdatachrm or dmdata")
 
-  marker.groupings <- rep(FALSE, ncol(dmat)-1)
-  group.indx <- rep(NA, ncol(dmat))
-  zeroblockindx <- NULL
- 
-  ## Determining separate groupings of markers
-  for(ii in 2:ncol(dmat))
-    if (dmat[,ii-1] %*% dmat[, ii] > 0)
-        marker.groupings[ii-1] <-  TRUE
+  if( is.dmdatachrm(x))
+   {
 
-  if(sum(dmat[,1])==0) { 
-     zeroblockindx <- 1
-     blockindx <- 1
-     group.indx[1] <- zeroblockindx
-   } else {
-     blockindx <- 1
-     group.indx[1] <- blockindx
-   }
-  for(ii in 2:ncol(dmat))
-  {
-    if(sum(dmat[,ii])==0){
-       if(is.null(zeroblockindx)) {
-         # zeroblock indx not set yet
-         zeroblockindx <- blockindx + 1
-         blockindx <- blockindx + 1
-        }
-       group.indx[ii] <- zeroblockindx
-     } else {
-      if(!marker.groupings[ii-1])
-          blockindx <- blockindx + 1
-      group.indx[ii] <- blockindx
+     res <- i.getblocks(x)
+
+   }  else {
+    res <- vector("list", attributes(x)$nchrm)
+    names(res) <- as.character(1:attributes(x)$nchrm)
+
+    for(ch in 1:attributes(x)$nchrm)
+    {
+       res[[ch]] <- i.getblocks(x[[ch]])
+
     }
-  }
-  names(group.indx) <- colnames(dmat)
-  return(group.indx)
+  } ## end if else
+  return(res)
 } ## end function
 
-IdentifyMarkerOrd <- function(dmat = NULL)
+
+
+
+
+idmarkersuborder <- function(x)
 {
 
   ## Purpose:  to identify all candidate marker orderings
   ##           for each marker block of loci. 
-  ## Args:     dmat  matrix of marker deletion data (0,1)
+  ## Args:     object of class dmdatachrm or dmdata
   ##           ord  ordering from seriate function
-  ## Returns:  list where each element is a integer vector or possible orderings
+  ## Returns:  list of lists where each element is a integer vector or possible orderings for each 
+  ##           chromosome
+
+  if (!is.dmdata(x) & !is.dmdatachrm(x)  )
+     stop("Object not of class dmdatachrm or dmdata")
 
 
-  if(!is.dmdata(dmat)) stop("Error. Object must be of class dmdata.")
-
-
-  ## Order rows/lines based on deletion pattern
-  d <- dmat
-  class(d) <- "matrix" 
-  sord <- seriate(d, method="BEA")
-
-  ## identify any marker blocks
-  blocks <- IdentifyMarkerBlocks(dmat)
-
-  list.orders <- list(blocks=blocks, orders=list())
-
-  for( jj in unique(blocks) )
+  if(is.dmdatachrm(x))
   {
 
-     cindx <- which(blocks==jj)
-     if(length(cindx)==1)
-     {
-      list.orders$orders[[jj]] <- 1
-      names(list.orders$orders[[jj]]) <- names(blocks)[cindx]
+    ## Order rows/lines based on deletion pattern
+    sord <- i.order(x)
+
+    ## identify any marker blocks
+    blocks <- idmarkerblocks(x)
+
+    ## get marker orders within each block. This is 
+    ## a list object with the number of elements being 
+    ## the number of unique blocks. 
+    list.orders <- i.getorder(x, blocks, sord   )
+   } else {
+   list.orders <- vector("list", attributes(x)$nchrm)
+   names(list.orders) <- as.character(1:attributes(x)$nchrm)
+
+   for(ch in 1:attributes(x)$nchrm)
+   {
+      ## Order rows/lines based on deletion pattern
+      sord <- i.order(x[[ch]])
+
+      ## identify any marker blocks
+      blocks <- idmarkerblocks(x[[ch]])
+
+      ## get marker orders within each block. This is 
+      ## a list object with the number of elements being 
+      ## the number of unique blocks. 
+      list.orders[[ch]] <- i.getorder(x[[ch]], blocks, sord   )
+   }
+}
+
+  return(list.orders)
+
+} ## end function idmarkersuborder
+
+
+
+   i.impute <- function(x, uniform=TRUE)
+   {
+    ## internal function
+    ## Args:
+    ##       x object of class dmdatachrm
+     mp <- 0.05
+
+     if(!is.dmdatachrm(x)) stop(" Not of class dmdatachrm.")
+
+
+     if(is.null(attributes(x)$imputed))
+     {  ## not set yet
+     indx <- which(is.na(x), arr.ind=TRUE)
+     attr(x, "imputed") <- indx  ## location in x of imputed data
      } else {
-     dat <- dmat[, cindx]
-     ## determine: change in number of deletions across loci
-     num.deletions <- colSums( dat[get_order(sord[1]),]   )
-     change.in.number.of.deletions  <- rep(FALSE, ncol(dat)-1)
-     for(ii in 2:ncol(dat))
-        if( abs(num.deletions[ii] - num.deletions[ii-1]) > 0)
-            change.in.number.of.deletions[ii-1] <- TRUE
-
-     ## determine: change in lines with deletions
-     change.in.lines.with.deletions <- rep(FALSE, ncol(dat)-1)
-     for(ii in 2:ncol(dat))
-          if( any((dat[,ii-1] + dat[,ii])==1) )
-              change.in.lines.with.deletions[ii-1] <- TRUE
-
-     ## if 0, then false false and marker not uniquely positioned
-     col.sums <-  colSums(  matrix( data= c(change.in.number.of.deletions,
-                          change.in.lines.with.deletions), byrow=T, nrow=2) )
-
-     ## identify markers that cannot be uniquely positioned. 
-     indx <- 1
-     orderings <- rep(0, ncol(dat))
-     orderings[1] <- indx
-     for(ii in 2:ncol(dat))
-     {
-       if( col.sums[ii-1] != 0)
-            indx <- indx + 1
-       orderings[ii] <- indx
+       indx <- attributes(x)$imputed
      }
-     list.orders$orders[[jj]] <- orderings
-     names(list.orders$orders[[jj]]) <- colnames(dmat)[cindx]
-     } ## end if else
-    } ## end jj
-    return(list.orders)
 
-} ## end function IdentifyMarkerOrd
+     if(uniform)
+        x[indx] <- sample(unique(x)[!is.na(unique(x))], nrow(indx), replace=T)
 
-
-
-
-ImputeMissingGeno <- function(dmat=NULL,  uniform=TRUE)
-{
-   if(!is.dmdata(dmat)) stop("Object must be of class dmdata.")
-
-   indx <- which(is.na(dmat), arr.ind=TRUE)
-   attr(dmat, "imputed") <- indx  ## location in dmat of imputed data
-   if(uniform)
-      dmat[indx] <- sample(unique(dmat)[!is.na(unique(dmat))], nrow(indx), replace=T)
-
-   if(!uniform) {
+     if(!uniform) {
      
-      for(ii in 1:nrow(indx))
-      {
-        ro <- indx[ii,1]; co <- indx[ii,2]
-        if (co > 1 & co < ncol(dmat) ) {
-           jjr <- jjl <- co
+        for(ii in 1:nrow(indx))
+        {
+          ro <- indx[ii,1]; co <- indx[ii,2]
+          if (co > 1 & co < ncol(x) ) {
+             jjr <- jjl <- co
            
-           while(is.na(dmat[ro,jjr])  & jjr != ncol(dmat)) jjr <- jjr+1
-           while(is.na(dmat[ro,jjl]) &  jjl != 1)           jjl <- jjl- 1
-           if (sum(dmat[ro, c(jjl, jjr)], na.rm=TRUE) == 0)  dmat[ro,co] <- sample(0:1, 1, prob=c(0.95, 0.05))
-           if (sum(dmat[ro, c(jjl, jjr)], na.rm=TRUE) == 1)  dmat[ro,co] <- sample(0:1, 1, prob=c(0.5, 0.5))
-           if (sum(dmat[ro, c(jjl, jjr)], na.rm=TRUE) == 2)  dmat[ro,co] <- sample(0:1, 1, prob=c(0.05, 0.95))
-         } ## end if
+             while(is.na(x[ro,jjr])  & jjr != ncol(x)) jjr <- jjr+1
+             while(is.na(x[ro,jjl]) &  jjl != 1)           jjl <- jjl- 1
+             if (sum(x[ro, c(jjl, jjr)], na.rm=TRUE) == 0)  x[ro,co] <- 
+                            sample(0:1, 1, prob=c(1-mp, mp))
+             if (sum(x[ro, c(jjl, jjr)], na.rm=TRUE) == 1)  x[ro,co] <- 
+                            sample(0:1, 1, prob=c(0.5, 0.5))
+             if (sum(x[ro, c(jjl, jjr)], na.rm=TRUE) == 2)  x[ro,co] <- 
+                            sample(0:1, 1, prob=c(mp, 1-mp))
+           } ## end if
 
-        if (co==1) {
-           jjr <- co
-           while(is.na(dmat[ro,jjr])  & jjr != ncol(dmat)) jjr <- jjr+1
-           if (dmat[ro, jjr] == 0)  dmat[ro,co] <- sample(0:1, 1, prob=c(0.95, 0.05))
-           if (dmat[ro, jjr] == 1)  dmat[ro,co] <- sample(0:1, 1, prob=c(0.5, 0.5))
-         } # end if
-         if (co == ncol(dmat)) {
-           jjl <- co
-           while(is.na(dmat[ro,jjl]) & jjl != 1) jjl <- jjl - 1
-           if (dmat[ro, jjl] == 0)  dmat[ro,co] <- sample(0:1, 1, prob=c(0.95, 0.05))
-           if (dmat[ro, jjl] == 1)  dmat[ro,co] <- sample(0:1, 1, prob=c(0.5, 0.5))
-         } # end if
-      } # end for
-   }  ## end if !uniform
-   return(dmat)
+          if (co==1) {
+             jjr <- co
+             while(is.na(x[ro,jjr])  & jjr != ncol(x)) jjr <- jjr+1
+             if (x[ro, jjr] == 0)  x[ro,co] <- sample(0:1, 1, prob=c(1-mp, mp))
+             if (x[ro, jjr] == 1)  x[ro,co] <- sample(0:1, 1, prob=c(0.5, 0.5))
+           } # end if
+           if (co == ncol(x)) {
+             jjl <- co
+             while(is.na(x[ro,jjl]) & jjl != 1) jjl <- jjl - 1
+             if (x[ro, jjl] == 0)  x[ro,co] <- sample(0:1, 1, prob=c(1-mp, mp))
+             if (x[ro, jjl] == 1)  x[ro,co] <- sample(0:1, 1, prob=c(0.5, 0.5))
+           } # end if
+        } # end for
+     }  ## end if !uniform
+
+     attr(x, "imputed") <- indx
+   #  x <- as.dmdatachrm(x)
+   
+     return(x)
+    } 
+
+
+
+impute <- function(x,  uniform=TRUE)
+{
+   if (!is.dmdata(x) & !is.dmdatachrm(x)  )
+     stop("Object not of class dmdatachrm or dmdata")
+
+   if(is.dmdatachrm(x))
+     res <- i.impute(x)
+   else 
+   {
+      res <- vector("list", attributes(x)$nchrm)
+      names(res) <- as.character(1:attributes(x)$nchrm)
+
+      for(ch in 1:attributes(x)$nchrm)
+        res[[ch]] <- i.impute(x[[ch]])
+      res <- as.dmdata(res)
+   } ## end else
+   return(res)
 
 }  ## end function 
 
 
 
 
-colourplot <- function(dmap, main=NULL,...)
+
+
+
+dmplot <- function(x, chrm=NULL, main=NULL, cx = 0.5, ...)
 {
-    ## produces a colour deletion mapping plot where like markers have the 
-    ## same colour and missing obs are colored differently. 
+   ## check inputs
+   i.dmplot.check(x, chrm)
 
-    class(dmap) <- "matrix"
-    dimc <- ncol(dmap)
-    dimr <- nrow(dmap)
-    plot(dmap, xlim = c(1, dimc), ylim = rev(c(1, dimr)), xlab = "", 
-        ylab = "", type = "n", axes = FALSE, frame = TRUE, bty="n", oma=c(1,1,1,1))
-    if (!is.null(main)) 
-        title(main = main, line = 3)
-
-    ## assign a unique colour only if marker order index is unique
-    a <- IdentifyMarkerOrd(as.dmdata(dmap)) ## list with blocks and orders
-    # assigning a unique index based on assumption that there will never be more than
-    # 10000 blocks 
-    offset <- 10000 * a$blocks
-    mrkord <- offset + unlist(a$orders)
-    # assign a colour to each mrk order but only a new colour if mrkord changes in value
-    colourindx <- (as.integer(as.factor(mrkord)) %% 3)  + 1
-    colpallet <- c("red","grey","black")
-    colmarkers <-   colpallet[colourindx]
+   if (is.null(chrm)) chrm <- 1:attributes(x)$nchrm
 
 
-    axis(3, 1:dimc, labels=FALSE, cex.axis = 0.5, las = 3, mgp=c(0,1,0))
-    at = 1:dimc
-    mtext(side = 3, text = dimnames(dmap)[[2]], at = at, col = colmarkers, line = 1, cex=0.5, 
-          las = 2)  ## axis for markers
-    axis(2, 1:dimr, dimnames(dmap)[[1]], cex.axis = 0.5, las = 1, mgp=c(0,0.5,-0.5))
-    segments(x0 = 0.5:(dimc + 0.5), y0 = 0.5, y1 = max(dimr) + 0.5, col="grey")
-    segments(x0 = 0.5, y0 = 0.5:(dimr + 0.5), x1 = max(dimc) + 0.5, col="grey")
-    indx <- which(is.na(dmap), arr.ind = TRUE)
-    points(indx[, 2], indx[, 1], cex=1)
-    indx <- which(dmap == 1, arr.ind = TRUE)
-    points(indx[, 2], indx[, 1], pch = 19, cex=1)
-    t <- c(0, findInterval(unique(IdentifyMarkerBlocks(as.dmdata(dmap))), IdentifyMarkerBlocks(as.dmdata(dmap))))
-    segments(x0 = t + 0.5, y0 = 0.5, y1 = max(dimr) + 0.5)
-    axis(1, (t[-length(t)] + t[-1])/2, sprintf("B%d", unique(IdentifyMarkerBlocks(as.dmdata(dmap)))), 
-        las = 3, tick = FALSE, mgp=c(0,0,0),cex.axis = 0.75)
+    for(ch in chrm)
+    {  ## set up graphic window      
+       i.open.graphics()
 
+       ## setup plotting regions (i.e. initialize + grid)
+       i.dmplot.setup(x[[ch]],  ch, main)
 
-    ## add missing data
-    indxNA <- attr(dmap, "imputed")
-    if(!is.na(indxNA))
-    {
-     indxNA.deletion <- indxNA[dmap[indxNA] == 1,]
-     indxNA.nodeletion <- indxNA[dmap[indxNA] == 0,]
-    if(length(indxNA.deletion) > 0)   points(indxNA.deletion[,2], indxNA.deletion[,1], col="blue", pch=19, cex=1)
-    if(length(indxNA.nodeletion) > 0) points(indxNA.nodeletion[,2], indxNA.nodeletion[,1], col="blue", pch=15, cex=1)
-    } ## end if
+       ## plot deletions
+       indx <- which(x[[ch]] == 1, arr.ind = TRUE)
+       points(indx[, 2], indx[, 1], pch = 19, cex=cx)
 
+       if(any(is.na(x[[ch]])))
+       { # if data contains any NA's then plot with no block structure
+           i.dmplot.markeraxis(x[[ch]])  ## B&W marker labels
 
+           #  plot missing observations
+           indx <- which(is.na(x[[ch]]), arr.ind = TRUE)
+           points(indx[, 2], indx[, 1], col="blue", pch=19, cex=cx )
+       }  else {
+           i.dmplot.markeraxis(x[[ch]])  ## colour marker labels
+           i.dmplot.blocks(x[[ch]])  ## draw blocks
 
-} ## end function plot.dmdata
-
-
-
-
-
-
-plot.dmdata <- function(x, main=NULL,...)
-{
-    class(x) <- "matrix"
-    dimc <- ncol(x)
-    dimr <- nrow(x)
-    plot(x, xlim = c(1, dimc), ylim = rev(c(1, dimr)), xlab = "", 
-        ylab = "", type = "n", axes = FALSE, frame = TRUE, bty="n", oma=c(1,1,1,1))
-    if (!is.null(main)) 
-        title(main = main, line = 3)
-
-    if(any(is.na(x)))
-    { # if data contains any NA's then printed as black/white plot with no block structure
-        axis(3, 1:dimc, dimnames(x)[[2]], cex.axis = 0.5, las = 3, mgp=c(0,1,0))
-        axis(2, 1:dimr, dimnames(x)[[1]], cex.axis = 0.5, las = 1, mgp=c(0,0.5,-0.5))
-        segments(x0 = 0.5:(dimc + 0.5), y0 = 0.5, y1 = max(dimr) + 0.5, col="grey")
-        segments(x0 = 0.5, y0 = 0.5:(dimr + 0.5), x1 = max(dimc) + 0.5, col="grey")
-        indx <- which(is.na(x), arr.ind = TRUE)
-        points(indx[, 2], indx[, 1], cex=1)
-        indx <- which(x == 1, arr.ind = TRUE)
-        points(indx[, 2], indx[, 1], pch = 19, cex=1)
-    }  else {
-        ## produces a colour deletion mapping plot where like markers have the 
-        ## same colour and missing obs are colored differently. 
-
-        ## assign a unique colour only if marker order index is unique
-        a <- IdentifyMarkerOrd(as.dmdata(x)) ## list with blocks and orders
-        # assigning a unique index based on assumption that there will never be more than
-        # 10000 blocks 
-        offset <- 10000 * a$blocks
-        mrkord <- offset + unlist(a$orders)
-        # assign a colour to each mrk order but only a new colour if mrkord changes in value
-        colourindx <- (as.integer(as.factor(mrkord)) %% 3)  + 1
-        colpallet <- c("red","grey","black")
-        colmarkers <-   colpallet[colourindx]
-
-
-        axis(3, 1:dimc, labels=FALSE, cex.axis = 0.5, las = 3, mgp=c(0,1,0))
-        at = 1:dimc
-        mtext(side = 3, text = dimnames(x)[[2]], at = at, col = colmarkers, line = 1, cex=0.5,
-              las = 2)  ## axis for markers
-        axis(2, 1:dimr, dimnames(x)[[1]], cex.axis = 0.5, las = 1, mgp=c(0,0.5,-0.5))
-        segments(x0 = 0.5:(dimc + 0.5), y0 = 0.5, y1 = max(dimr) + 0.5, col="grey")
-        segments(x0 = 0.5, y0 = 0.5:(dimr + 0.5), x1 = max(dimc) + 0.5, col="grey")
-        indx <- which(is.na(x), arr.ind = TRUE)
-        points(indx[, 2], indx[, 1], cex=1)
-        indx <- which(x == 1, arr.ind = TRUE)
-        points(indx[, 2], indx[, 1], pch = 19, cex=1)
-        t <- c(0, findInterval(unique(IdentifyMarkerBlocks(as.dmdata(x))), IdentifyMarkerBlocks(as.dmdata(x))))
-        segments(x0 = t + 0.5, y0 = 0.5, y1 = max(dimr) + 0.5)
-        axis(1, (t[-length(t)] + t[-1])/2, sprintf("B%d", unique(IdentifyMarkerBlocks(as.dmdata(x)))),
-            las = 3, tick = FALSE, mgp=c(0,0,0),cex.axis = 0.75)
-
-        ## add missing data
-        indxNA <- attr(x, "imputed")
-        if(!is.na(indxNA))
-        {
-         indxNA.deletion <- indxNA[x[indxNA] == 1,]
-         indxNA.nodeletion <- indxNA[x[indxNA] == 0,]
-        if(length(indxNA.deletion) > 0)   points(indxNA.deletion[,2], indxNA.deletion[,1], col="blue", pch=19, cex=1)
-        if(length(indxNA.nodeletion) > 0) points(indxNA.nodeletion[,2], indxNA.nodeletion[,1], col="blue", pch=15, cex=1)
-        } ## end if
+           ## plot imputed values
+           indxNA <- attr(x[[ch]], "imputed")
+           if(!any(is.na(indxNA)))
+           {
+            indxNA.deletion <- indxNA[x[[ch]][indxNA] == 1,]
+            indxNA.nodeletion <- indxNA[x[[ch]][indxNA] == 0,]
+           if(length(indxNA.deletion) > 0)  ## imputed deletion 
+               points(indxNA.deletion[,2], indxNA.deletion[,1], col="red", pch=19, cex=cx )
+           if(length(indxNA.nodeletion) > 0) ## imputed non-deletion
+               points(indxNA.nodeletion[,2], indxNA.nodeletion[,1], col="red", pch=15, cex=cx )
+           } ## end if
     }  ## end if else
-
-
-
-} ## end function plot.dmdata
-
-
+    } ## end for ch
+} ## end function dmplot
 
 
 
 
-
-
-
-as.dmdist.list <- function(x)
-{
-# convert list object into dmdist object. 
-# list object must have four elements
-# checks
-  if(length(x) != 4) stop("List is of incorrect length. Must be of length 4")
-  if(!(is.numeric(x[[1]]) & is.numeric(x[[2]]) & is.numeric(x[[3]]) & is.numeric(x[[4]])))  
-          stop("Elements of list must be numeric")
-
-   res <- list("nrefblocks"=x[[1]], "nobsblocks"=x[[2]], "mindist"=x[[3]], "minwrong"=x[[4]])
-   class(res) <- "dmdist"
-   res
-}
-
-
-
-as.dmdata.matrix <- function(x)
-{
-  # convert matrix object into dmdata object.
-  # matrix is given generic marker and line names if col and row names are null.
-  
-  # checks
-  if(ncol(x) < 2) stop("Matrix must contain more than a single column.")
-  if(nrow(x) < 2) stop("Matrix must contain more than a single row.")
-  if(length(unique(as.vector(x))[!is.na(unique(as.vector(x)))]) > 2) stop("Matrix contains more than two unique values.")
-
-  # convert matrix scores into 0/1 where we assume deletions are least prevalent. 
-  mode(x) <- "factor"  
-  mode(x) <- "numeric" ## trick to give me numbers
-  t <- table(x)
-  if(t[1] > t[2] )
-  {
-     x[which(x== as.numeric(names(t[1])), arr.ind=TRUE)] <- 0
-     x[which(x== as.numeric(names(t[2])), arr.ind=TRUE)] <- 1
-  } else {
-     x[which(x== as.numeric(names(t[2])), arr.ind=TRUE)] <- 0
-     x[which(x== as.numeric(names(t[1])), arr.ind=TRUE)] <- 1
- } 
-
-
-
-    
-  ## create generic marker names
-  if(is.null(colnames(x))) colnames(x) <- paste("M", 1:ncol(x), sep="")
-
-  ## abbreviate line names
-  if(is.null(rownames(x))) rownames(x)  <- paste("L", 1:nrow(x), sep="")
-
-
-  ## add additional attribute for row,column location of imputed genotypes 
-  ## which is null at the moment.
-  attr(x,"imputed") <- NA
-
-  # new class of object where object contains matrix data with special attributes
-  class(x) <- "dmdata"
-  
-  x
-}
-
-is.dmdata <- function(dmat) 
-  inherits(dmat, "dmdata")
-
-as.dmdata <- function(x) 
-  UseMethod("as.dmdata")
-
-
-as.dmdata.default <- function(x)
-{
-  if(is.dmdata(x))
-     x
-  else
-    {
-      stop(" Only objects of type matrix can be converted into dmdata objects.")
-      NULL
-    } 
-
-}
-
-is.dmdist <- function(y) 
-   inherits(y, "dmdist")
-
-as.dmdist <- function(x) 
-   UseMethod("as.dmdist")
-
-as.dmdist.default <- function(x)
-{
- if(is.dmdist(x))
-    x
- else
-    {
-    stop(" Object not of list type to be converted into a dmdist object.")
-    NULL
-    }
-}  ## end function
 
 
 
@@ -1023,129 +1378,243 @@ Collapse <- function(dmat=NULL) {
    return(list(data = ret, collapsed = uniq$cols))
 }
 
+i.dmappingchrm.check <- function(x, niterates, nwithin, cooling, psampled)
+{
+  print(c(" psampled = ", psampled))
+  ## internal function to check parameters of dmapping
+   if (!is.dmdatachrm(x)  )
+     stop("Object not of class dmdatachrm or dmdata")
+  ## check for integer values
+ if (!is.numeric(niterates) & !is.integer(niterates))
+    stop(" niterates must be either numeric or an integer vector.")
+ if (!is.numeric(nwithin) & !is.integer(nwithin))
+    stop(" nwithin  must be either numeric or an integer vector.")
+
+
+ if(niterates < 1) stop(" niterates is the number of iterations and should be greater than 1.\n")
+ if(nwithin < 1) stop(" nwithin is the number of within temperature iterations and should be more than or equal to 1.\n")
+
+ if( cooling < 0 | cooling > 1) stop(" cooling constant must be between 0 and 1.\n")
+ if(psampled < 0 | psampled > 1) stop(" psampled  is a probability, hence it must be between 0 and 1\n")
+
+}
 
 
 
-DeletionMapping <- function(dmap=NULL, niterates=100, nwithin=100,cooling=0.99 , psampled=0.1, 
+i.dmapping.check <- function(x, chrm, niterates, nwithin, cooling, psampled)
+{
+  ## internal function to check parameters of dmapping
+   if (!is.dmdata(x)  )
+     stop("Object not of class dmdatachrm or dmdata")
+
+  if(!is.null(chrm))
+  {  ## chrm have been specified 
+      ## do some checks
+      if (!is.numeric(chrm) & !is.integer(chrm))
+         stop(" chrm must be either numeric or an integer vector.")
+      if (any(chrm < 1 | chrm > attributes(x)$nchrm))
+         stop(" chrm must be an integer vector between 1 and the number of chromosomes.")
+  } ## end is.null
+
+  ## check for integer values
+ if (!is.numeric(niterates) & !is.integer(niterates))
+    stop(" niterates must be either numeric or an integer vector.")
+ if (!is.numeric(nwithin) & !is.integer(nwithin))
+    stop(" nwithin  must be either numeric or an integer vector.")
+
+
+ if(niterates < 1) stop(" niterates is the number of iterations and should be greater than 1.\n")
+ if(nwithin < 1) stop(" nwithin is the number of within temperature iterations and should be more than or equal to 1.\n")
+
+ if( cooling < 0 | cooling > 1) stop(" cooling constant must be between 0 and 1.\n")
+ if(psampled < 0 | psampled > 1) stop(" psampled  is a probability, hence it must be between 0 and 1\n")
+
+}
+
+
+i.initconfig <- function(x, cooling, niterates, nwithin)
+{
+   ## internal function to initialize configuration
+   ##Args 
+   ##   x  dmdatachrm
+   ##   cooling  temperature cooling value
+   ##  niterates the number of iterates across temperature
+   res <- list()
+
+   ## add "cut" to x. Done for computational reasons. 
+   indx <- attributes(x)$imputed
+   cn <- colnames(x)
+   x <- cbind(x, rep(0, nrow(x)))
+   colnames(x) <- c(cn , "cut")
+   attributes(x)$imputed <- indx
+   class(x) <- "dmdatachrm"
+
+   res[["x"]] <- impute(x, uniform=TRUE)  ##  impute any missing genotypes
+   res[["bestx"]] <- x
+   res[["t"]] <- res[["bestt"]] <- 1000000  # starting tour length.
+   res[["bestdist"]] <- list("nrefblocks"=0, "nobsblocks"=0, "mindist"=0, "minwrong"=0)
+   res[["besttvec"]] <- rep(NA, niterates*nwithin)
+
+   res[["temp"]] <- 0.5/(cooling**niterates)
+   return(res)
+}
+
+
+   i.newconfig <- function(x, method)
+   {
+     ## internal function to create a new configuration
+     res <- list()
+     
+     
+
+
+     ## impute new set of missing marker genotypes
+     res[["x"]] <- impute(x, uniform=FALSE)
+       
+     # find best ordering of new realization and its touring length
+     D <- CreateDistMatrix(res[["x"]])
+     # adjusted D so that cut has 0 distance to every other city
+     tmpD <- as.matrix(D)
+     indxr <- which(rownames(tmpD)=="cut")
+     indxc <- which(colnames(tmpD)=="cut")
+     tmpD[indxr,] <- 0
+     tmpD[,indxc] <- 0
+     D <- as.dist(tmpD)
+
+     tD <- as.TSP(D)  # in TSP format
+     ### tD <- insert_dummy(tD, label="cut")  # adding extra dummy city
+     solu   <- solve_TSP(tD, method=method)
+     res[["t"]] <- attr(solu, "tour_length")
+     n.order <- cut_tour(solu, "cut")  # new marker ordering
+     res[["order"]] <- c(n.order, ncol(res[["x"]])) # adding "cut" back in at end of ordering
+     names(res[["order"]]) <- c(names(n.order), "cut")
+
+     return(res) 
+   }
+
+
+
+
+dmappingchrm <- function( x=NULL, niterates=100, nwithin=100,cooling=0.99 , psampled=0.1,
                             method="concorde", refblockstr=NULL, refmrkord=NULL, ...)
 {
-    if(!is.dmdata(dmap)) stop("Object must be of class dmdata.")
-    if( cooling < 0 | cooling > 1) stop(" Cooling constant must be between 0 and 1")
+ ## core routine for mapping deletions on a single chromosome
+ i.dmappingchrm.check(x, niterates, nwithin, cooling, psampled)  ## check inputs
 
 
-    ##-----------------------------##
-    ##  Initialization             ##
-    ##-----------------------------##
-    dmap <- CleanData(dmap, ignoreNA=FALSE)
+ ## create initial configuration to set 
+ ## x, bestx, t, bestt, bestdist, tvec, temp
+ resold <- i.initconfig(x, cooling, niterates, nwithin )
+ temp <- resold[["temp"]]
 
-    ## add cut to dmap. Done for computational reasons. 
-    n <- colnames(dmap)
-    dmap <- cbind(dmap, rep(0, nrow(dmap)))
-    colnames(dmap) <- c(n , "cut")
-    class(dmap) <- "dmdata"
+ counter <- 1
+ for(ii in 1:niterates)
+ {
+     for(jj in 1:nwithin)
+     {
+       print(jj)
 
-    odmap <- ImputeMissingGeno(dmap)
-    bestmap <- odmap
-    otlength <- besttlength <- 1000000  # starting tour length.
-    bestdist <- list("nrefblocks"=0, "nobsblocks"=0, "mindist"=0, "minwrong"=0)
+       ## create new configuration which returns
+       ##  x, order, t
+       resnew <- i.newconfig(resold[["x"]], method)
 
-    counter <- 1  
-    t <- rep(NA, niterates*nwithin)
-
-    temp <- 0.5/(cooling**niterates)
-
-    for(ii in 1:niterates)
-    {
-      for(jj in 1:nwithin)
-      {
-
-       # impute missing marker genotypes
-       ndmap <- ImputeMissingGeno(dmat=dmap, uniform=FALSE)
-
-       # find best ordering of new realization and its touring length
-       D <- CreateDistMatrix(ndmap)
-       # adjusted D so that cut has 0 distance to every other city
-       tmpD <- as.matrix(D)
-       indxr <- which(rownames(tmpD)=="cut")
-       indxc <- which(colnames(tmpD)=="cut")
-       tmpD[indxr,] <- 0
-       tmpD[,indxc] <- 0
-       D <- as.dist(tmpD)
-
-       tD <- as.TSP(D)  # in TSP format
-       ### tD <- insert_dummy(tD, label="cut")  # adding extra dummy city
-       solu   <- solve_TSP(tD, method=method)
-       ntlength <- attr(solu, "tour_length")
-       n.order <- cut_tour(solu, "cut")  # new marker ordering
-       n.order <- c(n.order, ncol(ndmap)) # adding "cut" back in at end of ordering
        # test if we should move to new realization
        rnd <- runif(1,0,1)
-       MHprob <- exp( -1*(ntlength-otlength)/temp)
+       MHprob <- exp( -1*(resnew[["t"]]-resold[["t"]])/temp)
+
        if (MHprob >= 1 | rnd < MHprob)
-      { # accept new realization
-        arr.ind <- attr(ndmap, "imputed")  ## need this otherwise it is lost 
-        # rearrange dmap to be new order
-         ndmap <- ndmap[,n.order] # reorder  newly imputed data
-         class(dmap) <- class(ndmap) <- "dmdata"
-         # recoding the column index for imputed to match the new ordering
-         attr(ndmap, "imputed") <-  cbind(arr.ind[,1], n.order[arr.ind[,2]])
-         odmap <- ndmap  # assign newly imputed data to current data
-         otlength <- ntlength
-        #keep track of best realization
-         if(ntlength < besttlength)
-         {
-           bestmap <- ndmap
-           besttlength <- ntlength
-           blockstrbest <- IdentifyMarkerBlocks(bestmap)
-           bestdist <- RearrangeDist(refblockstr, refmrkord, blockstrbest)
-         }
+       { # accept new realization
+
+           # rearrange x to be new order
+           resnew <- within(resnew, x <- as.dmdatachrm(x[,order])) # reorder  newly imputed data
+           # recoding the column index for imputed to match the new ordering
+           arr.ind <- with(resold, attr(x, "imputed"))  ## need this otherwise it is lost 
+
+           a <- cbind(arr.ind[,1], match(arr.ind[,2], resnew$order))
+
+
+           resnew <- within(resnew, attr(x, "imputed") <-  cbind(arr.ind[,1], 
+                                                               match(arr.ind[,2], order)))
+           resold[["x"]] <- resnew[["x"]]  # assign newly imputed data to current data
+           resold[["t"]] <- resnew[["t"]]
+           resold <- within(resold, attr(x, "imputed") <- attr(resnew[["x"]], "imputed"))
+           #keep track of best realization
+           if(resnew[["t"]] < resold[["bestt"]])
+           {
+                 resold[["bestx"]] <- resnew[["x"]]
+                 resold[["bestt"]] <- resnew[["t"]]
+                 blockstrbest <- idmarkerblocks(resold[["bestx"]])
+                 if(!is.null(refblockstr) & !is.null(refmrkord))
+                     resold[["bestdist"]] <- RearrangeDist(refblockstr, refmrkord, blockstrbest)
+           }
         } ## end if
 
         if(!is.null(refblockstr) & !is.null(refmrkord))
-
-        obsblockstr <- IdentifyMarkerBlocks(odmap)
-        tmp <- RearrangeDist(refblockstr, refmrkord, obsblockstr) ## calculate distance metric
-        print(tmp)
-
-        t[counter] <- besttlength
+        {
+              obsblockstr <- idmarkerblocks(resold[["oldx"]])
+              tmp <- RearrangeDist(refblockstr, refmrkord, obsblockstr) ## calculate distance metric
+        }
+        resold[["besttvec"]][counter] <- resold[["bestt"]]
         counter <- counter + 1
 
-       }
-       temp <- temp * cooling
-    }
+     }  ## end for inner
+     temp <- temp * cooling
+  }  ## end for outer
 
     ##----------------------------##
-    ## Final tidying of results   ##
+    ## Tidying of results   ##
     ##----------------------------##
-    
-    ## Moving any columns with no deletions to the end of the bestmap
-    indx <- which(colSums(bestmap)==0)
-    if(length(indx) > 0){
-         arr.ind <- attr(bestmap, "imputed")  ## need this otherwise it is lost 
-         mrk <- c( colnames(bestmap[, -indx]), colnames(bestmap[, indx])) 
-         mrk.ord <- c(seq(1,ncol(bestmap))[-indx], seq(1,ncol(bestmap))[indx])
-         bestmap <- bestmap[, mrk.ord]
-         attr(bestmap, "imputed") <-  cbind(arr.ind[,1], mrk.ord[arr.ind[,2]])
-    }
+    resold <- i.dmapping.tidy(resold)
 
-    ## saving matrix of imputed data locations
-    arr.ind <- attr(bestmap, "imputed")  ## need this otherwise it is lost 
+    return(resold)
+
+}
 
 
-    ## removing "cut" from bestmap
-    indx <- which(colnames(bestmap)=="cut")
-    bestmap <- bestmap[,-indx]
-
-    ## adding imputed data locations
-    attr(bestmap, "imputed") <- arr.ind
-
-    ## class
-    class(bestmap) <- "dmdata" 
 
 
-    return(list(bestmap=bestmap, besttlength=besttlength, t=t, bestdist=bestdist))
 
-}  # end function
+dmapping <- function(x=NULL, chrm=NULL, niterates=100, nwithin=100,cooling=0.99 , psampled=0.1,
+                            method="concorde", refblockstr=NULL, refmrkord=NULL, ...)
+{
+  ## core routine for deletion mapping
+    i.dmapping.check(x, chrm, niterates, nwithin, cooling, psampled)  ## check inputs
+
+  ## set up results list
+  final <- list( "bestx" = vector("list", attributes(x)$nchrm),
+                "bestt" = vector("list", attributes(x)$nchrm),
+                "besttvec" = vector("list", attributes(x)$nchrm) )
+  if(!(is.null(refblockstr) | is.null(refmrkord) )) final[["bestdist"]] <- vector("list", attributes(x)$nchrm)
+
+  
+  if(is.null(chrm)) chrm <- 1:attributes(x)$nchrm
+
+  for(ch in chrm)
+  {
+     res <- dmappingchrm(x[[ch]], niterates, nwithin, cooling, psampled, method, 
+                            refblockstr, refmrkord, ...)
+     final[["bestx"]][[ch]] <- res[["bestx"]]
+     final[["bestt"]][[ch]] <- res[["bestt"]]
+     final[["besttvec"]][[ch]] <- res[["besttvec"]]
+     if(!is.null(refblockstr) & !is.null(refmrkord))
+      {
+           final[["bestdist"]] <- vector("list", attributes(x)$nchrm)
+           final[["bestdist"]][[ch]] <- res[["bestdist"]] 
+      }
+
+  }  ## end for ch
+  final[["bestx"]] <- as.dmdata(final[["bestx"]])
+
+
+ return(final)
+}  ## end function
+
+
+
+
+
+
+
 
 
 ##--------------------------------##
@@ -1157,15 +1626,15 @@ DeletionMapping <- function(dmap=NULL, niterates=100, nwithin=100,cooling=0.99 ,
 #d <-   sim.dmdata( numlines = 50, plines = 0.2, nummarkers = 50,
 #    Enumdel = 8, p.missing = 0.1,  seed = 1)
 
-#dc <- CleanData(d[["missing"]])
+#dc <- cleandata(d[["missing"]])
 
 
 ### obtain true blocking structure
 #mrks <- colnames(dc)
 #cindx <- match(mrks, colnames(d[["nomissing"]]))
 #dn <- as.dmdata(d[["nomissing"]][,cindx])
-#trueblockstr <- IdentifyMarkerBlocks(dn)
-#truemrkord   <- IdentifyMarkerOrd(dn)$orders
+#trueblockstr <- idmarkerblocks(dn)
+#truemrkord   <- idmarkersuborder(dn)$orders
 
 
 
@@ -1290,72 +1759,41 @@ return(res)
 ##  Reading in Data        ##
 ##-------------------------##
 
-read.dmmap <- function(file, sep="", ...)
+
+i.rf.checkinputs <- function(datafile, mapfile,   mrks.as.rows, names.pres )
 {
- if(missing(file))
-    stop(" Input file cannot be missing.")
+  ## internal function to check input parameters for errors
+ if(missing(datafile))
+    stop(" Data file cannot be missing.")
+ if(!file.exists(datafile))
+   stop(" Data file does not exist.")
+ if(!is.logical(mrks.as.rows))
+   stop("mrks.as.rows must be TRUE/FALSE only. If TRUE, the first column contains the names of the markers.")
+ if(!is.logical(names.pres))
+    stop("names.pres must be TRUE/FALSE only. If TRUE, marker and plant names are present in the file.")
 
-   if(!file.exists(file))
-   stop(" Input file does not exist.")
-
-
- ## checking for correct number of header labels and fields in records
-   cf <- count.fields(file, sep=sep)
-   if(length(cf)==1)
-     stop("File only contains a single line.")
-
-  if (length(unique(cf))>1)
-  { ## file has incorrect record length
-    df <- data.frame(row=1:length(cf), n.elements=cf)
-    cat(" \n Rows have incorrect number of elements \n\n")
-    cat(" Number of elements in each row \n")
-    cat(c(df, "\n"))
-    opt <- options(show.error.messages=FALSE)
-    on.exit(options(opt))
-    stop()
-   } # end if length(unique(cf))
-
-
-  mapin <- read.table(file= file, header=TRUE,check.names = FALSE)
-  map <- list()
-  for (i in names(table(mapin[, 2]))) {
-        map[[i]] <- mapin[which(mapin[, 2] == i), 3]
-        names(map[[i]]) <- mapin[which(mapin[, 2] == i), 
-            1]
-       map[[i]] <- sort(map[[i]])
-  }
- 
-  map
+   if(!missing(mapfile))
+   {
+     if(!file.exists(mapfile))
+         stop(" Map  file does not exist.")
+   }
 
 }
 
 
-read.dmdata <- function(file, sep="", na.strings="NA", mrks.as.rows=TRUE, row.names=1, names.pres=TRUE, ...)
+i.rf.checkdatafile <- function(datafile, names.pres, mrks.as.rows, sep)
 {
-   ## performing checks
-  if(missing(file))
-    stop(" Input file cannot be missing.")
-
- if(!file.exists(file))
-   stop(" Input file does not exist.")
-
- if(!is.logical(mrks.as.rows))
-   stop("mrks.as.rows must be TRUE/FALSE only. If TRUE, the first column contains the names of the markers.")
-  
-  if(!is.logical(names.pres))
-    stop("names.pres must be TRUE/FALSE only. If TRUE, marker and plant names are present in the file.")
-   
-
+  ## internal function to check format of data file for errors
    ## checking for correct number of header labels and fields in records
-   cf <- count.fields(file, sep=sep)
+   cf <- count.fields(datafile, sep=sep)
    if(length(cf)==1)
      stop("File only contains a single line.")
 
-   if (names.pres) 
-   { ## file contains marker and plant names 
-     if(length(unique(cf))==2) 
+   if (names.pres)
+   { ## datafile contains marker and plant names 
+     if(length(unique(cf))==2)
         { ## checking to make sure we don't have lines of the same length as header
-          if (sum(cf== cf[1])> 1) 
+          if (sum(cf== cf[1])> 1)
           {
              df <- data.frame(row.no=1:length(cf), no.elements=cf)
              cat(" \n Rows have incorrect number of elements \n \n")
@@ -1367,8 +1805,8 @@ read.dmdata <- function(file, sep="", na.strings="NA", mrks.as.rows=TRUE, row.na
           }  # end sum(cf== cf[1])> 1
         } # end if length(unique(cf))==2
 
-     if (length(unique(cf)) > 2) 
-     {  ## file has incorrect record length 
+     if (length(unique(cf)) > 2)
+     {  ## datafile has incorrect record length 
        df <- data.frame(row.no=1:length(cf), no.elements=cf)
        cat(" \n Rows have incorrect number of elements \n \n")
        cat(" Number of elements in each row: \n")
@@ -1376,17 +1814,17 @@ read.dmdata <- function(file, sep="", na.strings="NA", mrks.as.rows=TRUE, row.na
        opt <- options(show.error.messages=FALSE)
        on.exit(options(opt))
        stop()
-     } else { ## file has correct record length
+     } else { ## datafile has correct record length
       if (cf[1] != cf[2] - 1)
-      { ## file's header line not of correct length
+      { ## datafile's header line not of correct length
           if (!mrks.as.rows) stop(" Incorrect number of marker labels ")
           if (mrks.as.rows)  stop(" Incorrect number of plant labels ")
       } # end if cf[1]
     } # end if length(unique(cf))
    }  else {
-      ## file only contains the data
+      ## datafile only contains the data
      if (length(unique(cf))>1)
-     { ## file has incorrect record length
+     { ## datafile has incorrect record length
        df <- data.frame(row=1:length(cf), n.elements=cf)
        cat(" \n Rows have incorrect number of elements \n\n")
        cat(" Number of elements in each row \n")
@@ -1397,13 +1835,56 @@ read.dmdata <- function(file, sep="", na.strings="NA", mrks.as.rows=TRUE, row.na
      } # end if length(unique(cf))
   } ## end if name.pres
 
+}
+
+
+i.rf.checkmapfile <- function(mapfile, sep)
+{
+   if(!file.exists(mapfile))
+         stop(" Map  file does not exist.")
+   ## internal function to check the map file for formatting errors
+   ## checking for correct number of header labels and fields in records
+   cf <- count.fields(mapfile, sep=sep)
+   if(length(cf)==1)
+           stop("File only contains a single line.")
+
+   if (length(unique(cf))>1)
+   { ## mapfile has incorrect record length
+          df <- data.frame(row=1:length(cf), n.elements=cf)
+          cat(" \n Rows have incorrect number of elements \n\n")
+          cat(" Number of elements in each row \n")
+          cat(c(df, "\n"))
+          opt <- options(show.error.messages=FALSE)
+          on.exit(options(opt))
+          stop()
+   } # end if length(unique(cf))
+}
+
+
+read.files <- function(datafile, mapfile, na.strings="NA", mrks.as.rows=TRUE, 
+                       row.names=1, names.pres=TRUE, sep="", ... )
+{
+
+   i.rf.checkinputs(datafile, mapfile,  mrks.as.rows, names.pres )
+
+   ## results structure
+   res <- list()
+
+   ##------------------------##
+   ##  Read data file        ##
+   ##------------------------##
+   i.rf.checkdatafile(datafile, names.pres, mrks.as.rows, sep)
+
+   ## read in data file
   if(!names.pres) ## no marker or plant names 
-       rt <- read.table(file=file, header=FALSE, ...)
+    rt <- read.table(file=datafile, header=FALSE, ...)
   else  ## marker and plant names being supplied
-       rt <- read.table(file=file, header=TRUE, row.names=row.names, ...)
+    rt <- read.table(file=datafile, header=TRUE, row.names=row.names, ...)
 
    # convert rt from data frame to matrix
    rt <- as.matrix(rt)
+   if(mrks.as.rows) ## transform
+       rt <- t(rt)
 
   ## Another very important check
   genos <- as.vector(table(rt))
@@ -1412,19 +1893,62 @@ read.dmdata <- function(file, sep="", na.strings="NA", mrks.as.rows=TRUE, row.na
       cat(" Data file has more than two genotype classes: ", names(table(rt)), "\n")
       stop() 
   }
-    
-  if(mrks.as.rows) ## transform
-       rt <- t(rt)
 
-   # clean data
-  rt <- cleandata(rt, file, names.pres)
-   
-   # turn into dmdata object 
-   rt <- as.dmdata(rt)
+#   # clean data
+#  rt <- cleandata(rt, datafile, names.pres)
+#   
+#   # turn into dmdata object 
+#   res[["x"]]  <- as.dmdata(rt)
 
-   return(rt)
+   ##--------------------------##
+   ## Read map file if present ##
+   ##--------------------------##
+   if(!missing(mapfile))
+   {
+       i.rf.checkmapfile(mapfile, sep)
+       mapin <- read.table(file= mapfile, header=TRUE,check.names = FALSE)
+       map <- list()
+       for (i in names(table(mapin[, 2]))) {
+             map[[i]] <- mapin[which(mapin[, 2] == i), 3]
+             names(map[[i]]) <- mapin[which(mapin[, 2] == i), 
+                 1]
+       map[[i]] <- sort(map[[i]])
+       }
+     res[["map"]] <- map
+   } ## end if mising mapfile
 
-} ## end function
+
+   ##------------------------------------##
+   ## Form dmdata object from rt matrix  ##
+   ##------------------------------------##
+   res[["x"]] <- vector("list", length(map))
+   for(ch in 1:length(map))
+   {
+     mrks <- names(map[[ch]])
+     deldata <- matrix(data=NA, nrow=nrow(rt), ncol= length(mrks))
+     indx <- match(mrks, colnames(rt))
+     if(any(is.na(indx))){
+       cat(" The following marker loci are in the map file but not the data file.\n")
+       cat( mrks[is.na(indx)], "\n")
+       stop(" Marker names mismatch in map and data files.")
+     }
+     res[["x"]][[ch]] <- as.dmdatachrm(rt[, indx])
+   }
+   res[["x"]] <- as.dmdata(res[["x"]])
+
+
+
+
+
+
+
+
+   return(res)
+
+}  ## end function
+
+
+
 
 
 sim.dmmap <- function (len = rep(100, 20), n.mar = 10,  eq.spacing = FALSE) 

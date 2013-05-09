@@ -2,12 +2,11 @@
 \alias{idmarkersuborder}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
-Identify Marker Orderings
+Identify Marker Sub-orderings
 }
 \description{
-Identifies the different possible marker orders that are possible with a set of deletion data and an assumed 
-marker order.  The assumed marker order is derived from the order of the 
-marker columns in the object \code{x}.  
+Identifies alternative marker orderings from a set of deletion data and an assumed marker ordering. The 
+assumed marker ordering is derived from the order of the marker columns in \code{x}.
 }
 \usage{
 idmarkersuborder(x)
@@ -21,17 +20,17 @@ An object of class \code{\link{dmdata}}  or \code{\link{dmdatachrm}}.
 \details{
 It will often be the case where a dervied ordering for the marker loci 
 will not in fact be unique. This lack of uniqueness occurs when 
-the marker loci are in blocks  (see \code{\link{id}})  and when 
+the marker loci are in blocks  (see \code{\link{idmarkerblocks}})  and when 
 marker loci share identical marker data within the blocks. 
 
-\code{idmarkersuborder} gives the marker ordering within each block across 
-chromsomes. For example, supposed the best ordering of marker loci 
+\code{idmarkersuborder} gives the marker ordering within each block. 
+For example, supposed the best ordering of marker loci 
 M1, \ldots, M7 is M1 M2 M3 M4 M5 M6 M7 where these loci belong to the same 
 marker block. Lets assume that the marker data for M1 and M2 are the 
 same. Also, lets assume the marker data for M5 and M6 are the same. 
 Then the output from \code{idmarkersuborder} would be 1 1 2 3 4 4 5. 
 
-Missing genotypes are not allowed and must first be imputed with \code{\link{ImputeMissingGeno} }
+Missing genotypes are not allowed and must first be imputed with \code{\link{impute} }
 }
 \value{
 If \code{x} is of class \code{\link{dmdatachrm}} then
@@ -57,7 +56,7 @@ The marker blocks and marker orderings
 may change if marker genotypes are being imputed.
 }
 \seealso{
-\code{\link{ImputeMissingGeno}}; \code{\link{idmarkerblocks}}
+\code{\link{impute}}; \code{\link{idmarkerblocks}}
 }
 \examples{
 # generate map with 10 chromosomes, each of length 

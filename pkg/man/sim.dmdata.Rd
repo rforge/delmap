@@ -4,13 +4,13 @@
 Simulation of deletion data
 }
 \description{
-\code{sim.dmdata} returns a matrix of genotype data where the rows correspond to 
-plants and the columns correspond to arker loci. A 
-column (i.e., marker locus) can contain genotypes 0/1/NA where 0 is no 
-deletion, 1 is a deletion, and NA is missing.   
+\code{sim.dmdata} generates deletion data according to the linkage map \code{map}. If \code{map} 
+is integer, then all marker loci are assumed to be on the same chromosome. Data are 
+generated where the rows correspond to the plants and the columns correspond to the marker loci.
 }
 \usage{
-sim.dmdata(numlines = NULL, plines = 0.5, map = NULL, numblocks=1, Enumdel = 4, p.missing = NULL, seed = NULL)
+sim.dmdata(numlines = NULL, plines = 0.5, map = NULL, numblocks=1, 
+           Enumdel = 4, p.missing = 0, seed = NULL)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -21,12 +21,14 @@ number of inbred lines/plants.
 the probability of a plant carrying a deletion. 
 }
   \item{map}{
-a list object that specifies the marker map. If map is unknown, use \code{\link{sim.dmmap}} to 
-create a generic map.
+a list object that specifies the marker map. The marker map may be read in from 
+file with \code{\link{read.files}} or simulated with 
+\code{\link{sim.dmmap}}. If an integer number, the marker loci are  assumed to
+belong to the same chromosome. 
 }
   \item{numblocks}{
-the minimum number of blocks (See \code{\link{IdentifyMarkerBlocks}}) in which each 
-chromosome will have. }
+the minimum number of blocks (See \code{\link{idmarkerblocks}}) belonging to
+a chromosome. }
   \item{Enumdel}{
 the average length (in terms of number of marker loci) for a deletion.
 }
@@ -38,11 +40,11 @@ an integer number that if set, will produce reproducable replicates.
 }
 }
 \details{
-Data are generated under an assumed marker map, a chromosome at a time.  The marker 
-map is either read from file with \code{\link{read.dmmap}} or simulated with 
-\code{\link{sim.dmmap}}. If the map is of no importance, then 
-\code{sim.dmmap(100,x)} can be used to create a simple single chromosome map with   \code{x} 
-marker loci.  
+Data are generated either under an assumed marker map, a chromosome at a time or where the marker loci 
+are assumed to belong to the same chromosome.  The marker 
+map is either read from file with \code{\link{read.files}} or simulated with 
+\code{\link{sim.dmmap}}. If the map is of no importance, then assign \code{map} an 
+integer number which corresponds to the  number of marker loci for which data are to be simulated. 
 
 \code{numblocks} is the minumum number of marker blocks per chromosome. 
 Marker blocks occur when there are no overlapping deletions across the lines. 
@@ -54,16 +56,12 @@ poisson distribution with mean \code{Enumdel}. If \code{p.missing} is set, then 
 data will contain missing genotypes (\code{NA}). 
 }
 \value{
-a list is returned that contains only a single element if \code{p.missing} is \code{NULL} 
-or two elements if \code{p.missing} is set. The elements are:
-\item{nomissing}{is a matrix of genotype data 0/1 where 0 is no deletion and
-1 is a deletion. The number of rows corresponds to the number of plants 
-in the simulated population and the number of columns is the number of 
-genetic marker loci. This will be the only element in output list if 
-p.missing is \code{NULL}.}
-\item{missing}{is a matrix of genotype data 0/1 that  
-is equivalent to "nomissing" but where marker genotypes have 
-been replaced, randomly, and set to NA.} 
+a list is returned that contains a single element \code{nomissing} if  \code{p.missing} is 0
+or two elements \code{nomissing} and \code{missing} if \code{p.missing} is non-zero. 
+
+Each element is an \code{\link{dmdata}} object which is itself a \code{list} object with 
+the number of elements corresponding to the number of chromosomes in the marker map \code{map}. 
+
 }
 \author{
 Andrew W. George
@@ -72,7 +70,7 @@ Andrew W. George
 %% ~Make other sections like Warning with \section{Warning }{....} ~
 
 \seealso{
-See Also \code{\link{plot}}
+See Also \code{\link{sim.dmmap}}
 }
 \examples{
 
@@ -87,17 +85,22 @@ See Also \code{\link{plot}}
 # use:
 map <- sim.dmmap(rep(250,10),100)
 
+# generate deletion data
+# a list is created with elements "missing" and "nomissing"
+#corresponding to deletion data with and without missing genotypes,
+# respectively.
 S <- sim.dmdata( numlines = 500, plines = 0.2, map = map, 
     numblocks=2, Enumdel = 8, p.missing = 0.02,  seed = 11)
+
+ numlines = 500; plines = 0.2; map = map
+    numblocks=2; Enumdel = 8; p.missing = 0.02;  seed = 11
+
 
 # print contents of matrix
 print(S$nomissing)
 
 # print contents of matrix
 print(S$missing)
-
-# plot contents
-plot(S$nomissing)
 
 
 

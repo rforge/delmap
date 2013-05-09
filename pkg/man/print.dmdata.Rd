@@ -5,21 +5,24 @@
 Print Deletion Data
 }
 \description{
-'print' prints the deletion data.
+Prints the deletion data for each chromosome.
 }
 \usage{
 \method{print}{dmdata}(x, \ldots)
 }
 \arguments{
   \item{x}{
-an object of class 'delmap.dat' that has either been read in from file or simulated. 
+an object of class \code{\link{dmdata}}.
 }
   \item{\dots}{
 further arguments passed to or from other methods.
 }
 }
 \details{
-'print.dmdata' is a customized print function for printing the contents of the 'dmdata' object. The first
+\code{print.dmdata} is a customized print function for printing 
+the contents of the \code{\link{dmdata}} object. For each 
+chromosome, 
+the first
  five lines of data, plant names, and marker names are displayed. 
 }
 \author{
@@ -33,6 +36,9 @@ Andrew W. George
 map <- sim.dmmap(100,20)
 
 # generate deletion data
+# a list is created with elements "missing" and "nomissing"
+#corresponding to deletion data with and without missing genotypes,
+# respectively.
 S <- sim.dmdata( numlines = 500, plines = 0.2, map = map, 
     Enumdel = 8, p.missing = 0.02,  seed = NULL)
 

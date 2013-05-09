@@ -81,7 +81,7 @@ In calculating our distance measure, we do not require a list object giving the 
 each block for the observed order. Only the blocking structure for the observed order is required.  
 }
 \seealso{
-\code{\link{IdentifyMarkerBlocks}}, \code{\link{IdentifyMarkerOrd}}, \code{\link{DeletionMapping}}
+\code{\link{idmarkerblocks}}, \code{\link{idmarkersuborder}}, \code{\link{dmapping}}
 }
 \examples{
 # reference block structure
