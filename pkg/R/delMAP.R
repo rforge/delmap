@@ -1985,7 +1985,7 @@ sim.dmmap <- function (len = rep(100, 20), n.mar = 10,  eq.spacing = FALSE)
 
 
 
-
+#### the end 
 
 
 
