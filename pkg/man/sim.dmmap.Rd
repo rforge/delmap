@@ -31,6 +31,12 @@ If \code{eq.spacing} is \code{TRUE}, markers are equally spaced between 0 and L.
 
 
 }
+\value{
+A \code{list} object is created with each element corresponding to a different chromosome. 
+Each element is a numeric vector giving the chromosome positions (in cM) of the marker loci. 
+The names of the elements correspond to the chromosome labels/names. 
+}
+
 \author{
 modified by Andrew George. Orginal version by Karl W. Broman
 }

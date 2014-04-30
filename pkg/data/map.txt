@@ -1,8 +1,8 @@
 Mrk       Chromosome   Position
-snp254    1            23.5  
-snp1832   1            104.3 
-snp111    2             0.5  
-snp9623   1            11.5  
-snp132    1            83.5  
-snp018    2            35.4  
+snp254    1A            23.5  
+snp1832   1A            104.3 
+snp111    2B             0.5  
+snp9623   1A            11.5  
+snp132    1A            83.5  
+snp018    2B            35.4  
 

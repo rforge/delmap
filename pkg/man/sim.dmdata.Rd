@@ -60,7 +60,8 @@ a list is returned that contains a single element \code{nomissing} if  \code{p.m
 or two elements \code{nomissing} and \code{missing} if \code{p.missing} is non-zero. 
 
 Each element is an \code{\link{dmdata}} object which is itself a \code{list} object with 
-the number of elements corresponding to the number of chromosomes in the marker map \code{map}. 
+the number of elements corresponding to the number of chromosomes in the marker map \code{map} and 
+an element for the marker map. 
 
 }
 \author{

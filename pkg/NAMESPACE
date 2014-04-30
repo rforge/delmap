@@ -4,6 +4,7 @@ export (
        as.dmdist,
        dmplot,
        cleandata, 
+       subsetdata,
        dmapping,
        dmappingchrm,
        idmarkerblocks,

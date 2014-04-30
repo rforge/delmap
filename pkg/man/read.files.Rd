@@ -83,30 +83,25 @@ cause an error.
 As an example of what the map file may look like:
 \tabular{ccc}{
 Mrk  \tab Chrm \tab  Pos  \cr
-snp254  \tab 1  \tab 23.5 \cr
-snp1832 \tab 1  \tab 104.3 \cr
-snp111  \tab 2  \tab 0.5  \cr
-snp9623 \tab 1  \tab 11.5 \cr
-snp132  \tab 1  \tab 83.5 \cr
-snp018  \tab 2  \tab 35.4 \cr
+snp254  \tab 1A  \tab 23.5 \cr
+snp1832 \tab 1A  \tab 104.3 \cr
+snp111  \tab 2B  \tab 0.5  \cr
+snp9623 \tab 1A  \tab 11.5 \cr
+snp132  \tab 1A  \tab 83.5 \cr
+snp018  \tab 2B  \tab 35.4 \cr
 }
 
 
 }
 \value{
-A list object is returned with the elements \code{x} and \code{map} (if a map is available). 
-The \code{x} element is a \code{\link{dmdata}} object.  
-The \code{map} element is a \code{list} object where its length is equal to the number of chromosomes. Each element of the list
-is a data frame with three columns. The first column contains the marker names,
-the second column contains the chromosome names, and the third column contains the position (in cM)
-of the marker loci.  Rows are placed in  map order.  
+An  \code{\link{dmdata}} object is returned. 
 }
 \author{
 Andrew W. George
 }
 \note{
 If \code{mapfile} is not specified, then all marker loci are assumed to belong 
-to the same chromsome.}
+to the same chromsome and are mapped to the same cM position.}
 \seealso{
 See Also \code{\link{sim.dmdata}}, \code{\link{read.table}}, \code{\link{dmdata}}
 }

@@ -10,11 +10,12 @@ escentially a \code{matrix}
 object with \code{attr(dmdata, "dimnames")[1]} being a character vector of 
 the line names, 
 \code{attr(dmdata, "dimnames")[1]} being a character vector 
-of the marker names, and 
+of the marker names,  
 \code{attr(dmdata, "imputed")} being an additional attribute which is 
 a two columned matrix giving the row,column 
 location of any elements in \code{dmdatachrm} that have had 
-their values imputed.
+their values imputed, and 
+\code{attr(dmdata, "chrmname")} being a character value for the chrosome label.
 Unlike the object class \code{\link{dmdata}}, there is no \code{nchrm} 
 attribute because all marker data in this class is assumed to 
 belong to the same 

@@ -7,7 +7,7 @@ Colour Plot of the Deletion Map
 Produces a colour plot of the deletion map. 
 }
 \usage{
-dmplot(x, chrm=NULL, main=NULL, cx=0.5, ...)
+dmplot(x, chrm=NULL, mrks=NULL, main=NULL, cx=0.5, ...)
 }
 \arguments{
   \item{x}{
@@ -15,6 +15,9 @@ an object of class \code{\link{dmdata}} that is allowed to have missing genotype
 }
   \item{chrm}{
 an integer vector specifying which chromosomes are to be plotted. 
+}
+  \item{mrks}{
+an integer vector specifying which markers for a chromosome  are to be plotted. 
 }
   \item{main}{
 title of plot.

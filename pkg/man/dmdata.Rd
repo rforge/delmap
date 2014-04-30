@@ -9,9 +9,9 @@
 \description{
 \code{dmdata} is an object of  class \code{dmdata} which is 
 escentially a \code{list} 
-object. Each element of the list is a \code{\link{dmdatachrm}}
-object. The number of elements in the list corresponds to the number 
-of chromosomes with marker data. The \code{dmdata} object has 
+object. The elements of \code{dmdata} are the deletion data for a chromosome and the  marker map. 
+The deletion data for a chromosome is a  \code{\link{dmdatachrm}} object.  
+The \code{dmdata} object has 
 an added attribute \code{attr(dmdata, "nchrm")} for the number of 
 chromosomes with data.   
 
@@ -41,7 +41,7 @@ is.dmdata(x)
 \code{is.dmdata}  returns TRUE if x is an object of class \code{dmdata}.
 
 \code{as.dmdata}  turns an object of class \code{matrix} 
-or \code{\link{dmdatachrm}} into and object 
+, \code{\link{dmdatachrm}}, or \code{list} into and object 
 of class \code{dmdata}. If the object is a \code{matrix}, then 
 it is assumed that 
 \itemize{
@@ -49,11 +49,27 @@ it is assumed that
 are the marker loci
 \item the marker loci belong to the same chromosome. 
 }
-The  elements of the matrix are turned into 0,1 for 
+Here, the  elements of the matrix are turned into 0,1 for 
 non-deletion and deletion, respectively. Also 
 generic plant and marker names are added to the rows and columns 
-of the matrix, respectively. If the matrix 
+of the matrix, respectively.  A generic map is also generated where the marker loci are assumed to be from a single 
+chromosome. 
+If the matrix 
 is of the wrong form, the function returns an error message. 
+
+If the object is of class \code{\link{dmdatachrm}}, then it is assumed that
+all the marker loci are located on the same chromosome at the same cM position. 
+
+
+If it is a \code{list} object, then it is assumed that 
+\itemize{
+\item the list contains a \code{map} element
+\item the non-map elements are objects of class \code{\link{dmdatachrm}} 
+}
+
+
+
+
 }
 \author{
 Andrew W. George

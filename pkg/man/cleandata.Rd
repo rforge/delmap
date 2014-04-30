@@ -32,6 +32,9 @@ deletions, then it is unlikely that the NA's are deletions.
 \value{
 An object of class \code{\link{dmdata}}.
 }
+\note{
+This function should only be applied to the cleaning of data whose marker loci belong to the same block.  XXXX Need to ref blocks and some more words !!!!!!!!!!!!
+}
 \author{
 Andrew W George
 }
@@ -46,12 +49,17 @@ map <- sim.dmmap(100,50)
 Slist <-  sim.dmdata( numlines = 50, plines = 0.2, map = map,
     Enumdel = 4, p.missing = 0.05,  seed = 1)
 
-# Number of marker loci before being cleaned
-nrow(Slist[["missing"]])
+Slist[["missing"]]
+## deletion plot before any cleaning
+dmplot(Slist[["missing"]] )
 
 
 # Clean data but where NAs affect which rows/columns are removed
-cleandata(Slist[["missing"]])
+Sclean <- cleandata(Slist[["missing"]])
+
+## deletion plot after cleaning
+dmplot(Sclean)
+
 
 
 }

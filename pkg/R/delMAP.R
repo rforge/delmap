@@ -86,7 +86,6 @@ Sort <- function(dmat = NULL, n = 1000)
   {
     ## Internal function
     ## Purpose: to write out the data
-
       if( nrow(x) < 5){
          if( ncol(x) < 8)
             write.table(format(x, justify="right"), row.names=F, col.names=F, quote=F)
@@ -458,7 +457,7 @@ i.getorder <- function(x, blocks, sord   )
 } ## end internal function
 
 
-i.dmplot.check <- function(x, chrm)
+i.dmplot.check <- function(x, chrm, mrks)
 {
   ## internal function to do some checks for dmplot
   if (!is.dmdata(x)  ) stop("Object not of class  dmdata")
@@ -471,6 +470,19 @@ i.dmplot.check <- function(x, chrm)
       if (any(chrm < 1 | chrm > attributes(x)$nchrm))
          stop(" chrm must be an integer vector between 1 and the number of chromosomes.")
   } ## end is.null
+
+  if(!is.null(mrks))
+  {
+    ## markers have been specified but only makes sense if a single chrm has been specified also
+    if(!is.numeric(mrks) & !is.integer(mrks))
+         stop(" mrks must be either numeric or an integer vector.")
+    if(is.null(chrm) | length(chrm) > 1)
+         stop(" A single chromosome must be specified.")
+    if(ncol(x[[chrm]]) < max(mrks))
+         stop(c(" Marker range cannot extend beyond the number of marker loci on the chromosome which is ", ncol(x[[chrm]])))
+  } ## end is.null
+
+
 
 }
 
@@ -698,6 +710,7 @@ as.dmdatachrm.matrix <- function(x)
   # convert matrix object into dmdatachrm object.
   # matrix is given generic marker and line names if col and row names are null.
   # marker loci assumed to belong to the same chromosome
+  # the chrmname attribute is added
 
   # checks
   if(ncol(x) < 2) stop("Matrix must contain more than a single column.")
@@ -732,6 +745,11 @@ as.dmdatachrm.matrix <- function(x)
        attr(x,"imputed") <- NA
      }
   }
+  ## add chrmname attribute in preparation for adding a chromosome name to object
+ if(is.null(attributes(x)$chrmname))
+    attr(x,"chrmname") <- NA
+
+
   ## give class to element of y
   class(x) <- "dmdatachrm"
   return(x)
@@ -764,9 +782,15 @@ as.dmdata.dmdatachrm <- function(x)
 {
   # convert dmdatachrm object into dmdata object.
   # markers are assumed to belong on a single chromosome 
+  # map object created 
 
   ynew <- vector("list", 1)  # list with a single element
-  names(ynew) <- "1"  ## chromosome number
+  names(ynew) <- attributes(x)$chrmname   ## chromosome name
+
+  ## simulate map because none available
+  map <- sim.dmmap(0, ncol(x))  ## dummy map
+  names(map[[1]]) <- colnames(x)  ## making sure correct marker names are being used
+  names(map) <- attributes(x)$chrmname  ## adding the chromosome label to name of map
 
   ynew[[1]] <- x  ## assigns structure of class dmdatachrm
 
@@ -775,6 +799,10 @@ as.dmdata.dmdatachrm <- function(x)
 
   # new class of object where object contains matrix data with special attributes
   class(ynew) <- "dmdata"
+
+  # add map element to list 
+  ynew[["map"]] <- map
+
 
   ynew
 }
@@ -785,14 +813,24 @@ as.dmdata.list <- function(x)
   # convert list object with elements of class dmdatachrm into 
   # a dmdata object.
 
-  for(ch in 1:length(x))
+  ## check for map object
+  if(!any(names(x)=="map"))
+    stop(" This list object does not have a map element.")
+
+  indx <- c(1:length(x))[names(x)!="map"]
+
+  for(ch in indx )
    if(!is.dmdatachrm(x[[ch]])) stop(" The elements of this list must be of class dmdatachrm.")
 
+  chrmname <- rep(NA, length(indx))  ## vector of chromosome names to be extracted from dmdatachrm objects
+  for(ch in indx)
+   chrmname[which(ch==indx)] <- attributes(x[[ch]])$chrmname
+
   y <- vector("list", length(x))
-  names(y) <- as.character(1:length(x))
+  names(y)[indx]  <-  chrmname
   y <- x
   class(y) <- "dmdata"
-  attr(y, "nchrm") <- length(x)
+  attr(y, "nchrm") <- length(indx)
   return(y) 
 }
 
@@ -850,8 +888,7 @@ sim.dmdata <- function(numlines=NULL, plines=0.5, map=NULL, numblocks=1, Enumdel
   names(dm[["nomissing"]]) <- as.character(1:length(map))
 
   ## simulate dummy map if map is integer number
-  if(is.integer(map)) map <- sim.dmmap(100, map) 
-
+  if(is.integer(map)) map <- sim.dmmap(0, map) 
 
   for(ch in 1:length(map))
   {  
@@ -900,23 +937,28 @@ sim.dmdata <- function(numlines=NULL, plines=0.5, map=NULL, numblocks=1, Enumdel
      } ## end for jj in 1:numblocks 
 
      dm[["missing"]][[ch]] <- as.dmdatachrm(dmdat.miss)
+     attributes(dm[["missing"]][[ch]])$chrmname <- names(map)[ch]
      dm[["nomissing"]][[ch]] <- as.dmdatachrm(dmdat.full)
+     attributes(dm[["nomissing"]][[ch]])$chrmname <- names(map)[ch]
 
   } ## end for
-
+  dm[["missing"]][["map"]] <- map
   dm[["missing"]] <- with(dm, as.dmdata(missing))
+
+  dm[["nomissing"]][["map"]] <- map
   dm[["nomissing"]] <- with(dm, as.dmdata(nomissing))
 
-
- 
    return(dm)
 
 }  ## end function  sim.dmdata
 
+
+
+
 print.dmdatachrm <- function(x, ...)
 {
   cat(" A summary of this object is: \n\n")
-  cat(" The (recoded) deletion data are: \n")
+  cat(" The (recoded) deletion data for Chromosome ", attributes(x)$chrmname , " is : \n")
   write.it(x)
   write.mrknames(x)
   write.linenames(x)
@@ -929,9 +971,11 @@ print.dmdata <- function(x, ...)
   cat(" A summary of this object is: \n\n")
   cat( " Object contains ",attributes(x)$nchrm,"chromosomes. \n")
 
-  for(ch in 1:attributes(x)$nchrm)
+
+  indx <- seq(1, length(x))[names(x)!="map"] 
+  for(ch in indx)
   {
-     cat(" \n\n  CHROMOSOME ", ch, "\n")
+     cat(" \n\n  CHROMOSOME ", attributes(x[[ch]])$chrmname , "\n")
      cat(" -----------------\n")
      cat(" The (recoded) deletion data are: \n")
      write.it(x[[ch]])
@@ -973,13 +1017,140 @@ CreateDistMatrix <- function(x=NULL)
 
 } ## end function CreateDistMatrix
 
+subsetdata  <- function(x=NULL, keep.chrm=NULL, drop.mrks=NULL, drop.rows=NULL)
+{
+  ## Purpose: subset dmdata object for markers and/or individuals
+  ##          and adjust the map accordingly. 
+  ## 
+  ##          If mrks or individuals are non-NULL, then x is only allowed to
+  ##          have a single chromosome
+  ##
+
+
+
+  ## checks
+   ## check x
+  if (!is.dmdata(x)  )
+      stop("Object not of class dmdata")
+  ## check chrm
+  if(is.null(keep.chrm))
+     stop(" At least one chromosome must be specified with keep.chrm.")
+
+  if(!is.null(keep.chrm)) {
+      if(! (is.character(keep.chrm) | is.integer(keep.chrm) | is.numeric(keep.chrm) ) )
+         stop(" chrm, when a vector, must be of class character, integer, or numeric. ")
+  }
+
+  ## check drop.mrks and drop.rows
+  if(!is.null(drop.mrks) | !is.null(drop.rows)) {
+     if(length(keep.chrm) > 1)
+        stop(" When drop.mrks and/or drop.rows are specificed, only a single chromosome can be specified.")
+  }
+
+  ## check drop.mrks
+  if(!is.null(drop.mrks)) {
+       if(!(is.character(drop.mrks) | is.integer(drop.mrks) | is.numeric(drop.mrks)) )
+         stop(" drop.mrks, when a vector, must be of class character, integer, or numeric. ")
+  }
+
+  ## check drop.rows
+  if(!is.null(drop.rows)) {
+       if(! (is.character(drop.rows) | is.integer(drop.rows) | is.numeric(drop.rows) ) )
+         stop(" drop.rows, when a vector, must be of class character ,integer, or numeric. ")
+  }
+
+
+  ## subsetting on chromosomes
+  chrms <- names(x)
+  chrms <- chrms[- grep("map", chrms)]  ## removing map label
+  keep.chrm <- sort(keep.chrm) ## just in case chrm labels are mis-ordered
+  if(!is.null(keep.chrm)) {
+     if(is.character(keep.chrm)) {
+         indx <- match(keep.chrm, chrms)
+         if(any(is.na(indx)))  
+             stop(paste(c(" keep.chrm contains the following mismatched chromosome labels ... ", keep.chrm[is.na(indx)]), collapse=" ")) 
+     }  ## end if is.character
+
+    if(is.integer(keep.chrm) | is.numeric(keep.chrm)){
+      indx <- match(keep.chrm, 1:length(chrms))
+      if(any(is.na(indx)))  
+             stop(paste(c(" keep.chrm is indexing chromosomes that do not exist ... ", keep.chrm[is.na(indx)]), collapse=" "))
+    }  ## end if is.integer | is.numeric
+
+     ## form subsetted structure and adjust map accordingly
+     subx <- x[indx]
+     attr(subx, "nchrm") <- length(indx)
+     indx <- match(keep.chrm, names(x[["map"]]))
+     if(any(is.na(indx)))  stop(" Problem with matching keep.chrm with map element in dmdata object.")
+     
+     subx[["map"]] <-  x[["map"]][indx]
+     subx <- as.dmdata(subx)
+
+  }  ## end if is.null(keep.chrm)
+
+ ## subsetting on mrks to be removed/dropped
+ if(!is.null(drop.mrks))
+ {
+   if(is.character(drop.mrks)){
+      indx <- match(drop.mrks, colnames(subx[[1]]))
+       if(any(is.na(indx)))
+            stop(paste(c(" drop.mrks contains the following mismatched marker labels ... ", drop.mrks[is.na(indx)]),collapse=" ") )
+   }  ## end if is.character
+
+   if(is.integer(drop.mrks) | is.numeric(drop.mrks)){
+      indx <- match(drop.mrks , 1:ncol(subx[[1]]))
+      if(any(is.na(indx)))  
+             stop(paste(c(" drop.mrks is indexing marker columns  that do not exist ... ", drop.mrks[is.na(indx)]),collapse= " "))
+    }  ## end if is.integer | is.numeric
+
+    ## form subsetted structure and adjust map accordingly
+    map <- subx[["map"]]
+    map[[1]]  <- map[[1]][-indx]
+    chrmname <- attributes(subx[[1]])$chrmname
+    subx[[1]] <- as.dmdatachrm(subx[[1]][, -indx] )
+    attr(subx[[1]], "chrmname") <- chrmname ## adding back lost attribute
+    subx[["map"]][[1]] <- subx[["map"]][[1]][-indx] 
+
+ }  ## end is.null(drop.mrks)
+
+ ## subsetting on lines/rows/plants to be removed/dropped
+ if(!is.null(drop.rows))
+ {
+  if(is.character(drop.rows)){
+      indx <- match(drop.rows, rownames(subx[[1]]))
+       if(any(is.na(indx)))  
+           stop(paste(c(" drop.rows contains the following mismatched row labels ... ", drop.rows[is.na(indx)] ), collapse=" "))
+   }  ## end if is.character
+
+   if(is.integer(drop.rows) | is.numeric(drop.rows)){
+      indx <- match(drop.rows , 1:nrow(subx[[1]]))
+      if(any(is.na(indx)))  stop(paste(c(" drop.rows is indexing rows  that do not exist ... ", drop.rows[is.na(indx)]), collapse=" "))
+    }  ## end if is.integer | is.numeric
+
+   ## form subsetted structure and adjust map accordingly
+    chrmname <- attributes(subx[[1]])$chrmname
+    subx[[1]] <- as.dmdatachrm(subx[[1]][ -indx, ])
+    attr(subx[[1]], "chrmname") <- chrmname ## adding back lost attribute
+
+ } ## end is.null(drop.rows)
+
+return(subx)
+
+
+} ## end of function subset.dmdata
+
+
+ 
+
+
+
 
 
 
 cleandata <- function(x=NULL, ignoreNA=FALSE)
 {
   ## Purpose:   cleandata 
-  ##            Removing of noninformative rows/columns.
+  ##            Removing of noninformative rows/columns and adjusting map accordingly
   ##            If ignoreNA=TRUE, rows and columns are removed without regard to NA's if they carry no deletions
   ##            IF ignoreNA=FALSE, only rows without deletions and/or columns with no NA's and 
   ##            no deletions are removed. That is, a column is only removed if it carrys no deletions and has 
@@ -991,32 +1162,33 @@ cleandata <- function(x=NULL, ignoreNA=FALSE)
   if (!is.dmdata(x)  )
         stop("Object not of class dmdata")
 
+   if(length(x) >2 )
+        stop("Object is only allowed to contain a single chromosome worth of data.")
 
-  for(ch in 1:attributes(x)$nchrm)  ## indexed over chromosomes
-  {
-     indx <- which(is.na(x[[ch]]), arr.ind = TRUE)
 
-     if(ignoreNA)
-     { ## ignoring NA's 
-           indx <- which(rowSums(x[[ch]], na.rm=TRUE) == 0) 
-           if(length(indx) > 0) x[[ch]] <- x[[ch]][-indx,]
-           indx <- which(colSums(x[[ch]], na.rm=TRUE)==0)
-           if(length(indx) > 0) x[[ch]] <- x[[ch]][, -indx]
+     indx <- which(is.na(x[[1]]), arr.ind = TRUE)
+
+     if(ignoreNA) { ## ignoring NA's 
+           indx <- which(rowSums(x, na.rm=TRUE) == 0) 
+           if(length(indx) > 0)  x <- subsetdata(x, keep.chrm=1, drop.rows=indx)
+
+
+           indx <- which(colSums(x, na.rm=TRUE)==0)
+           if(length(indx) > 0) x <- subsetdata(x, keep.chrm=1, drop.mrks=indx)
      }  else {
             ## taking NA's into account in the count
-           indx <- which(rowSums(x[[ch]], na.rm=TRUE) == 0 )
-           if(length(indx) > 0) x[[ch]] <- x[[ch]][-indx,]
-           indx <- which(colSums(x[[ch]], na.rm=TRUE) == 0 & colSums(is.na(x[[ch]])) ==0)
-           if(length(indx) > 0) x[[ch]] <- x[[ch]][,-indx]
+           indx <- which(rowSums(x[[1]], na.rm=TRUE) == 0 )
+           if(length(indx) > 0) x <- subsetdata(x, keep.chrm=1, drop.rows=indx)
+           indx <- which(colSums(x[[1]], na.rm=TRUE) == 0 & colSums(is.na(x[[1]])) ==0)
+           if(length(indx) > 0)  x <- subsetdata(x, keep.chrm=1, drop.mrks=indx)
      }  ## end if else     
 
-     class(x[[ch]]) <- "dmdatachrm"
-     if(any(is.na(x[[ch]])))
-              attr(x[[ch]], "imputed") <- which(is.na(x[[ch]]), arr.ind=TRUE)
-     else {
-              attr(x[[ch]], "imputed") <- NA
-     } ## if else
-  }  ## end for
+ #    class(x) <- "dmdatachrm"
+ #    if(any(is.na(x)))
+ #             attr(x, "imputed") <- which(is.na(x[[ch]]), arr.ind=TRUE)
+ #    else {
+ #             attr(x, "imputed") <- NA
+ #    } ## if else
 
   return(x)
 }  ## cleandata
@@ -1285,10 +1457,10 @@ impute <- function(x,  uniform=TRUE)
 
 
 
-dmplot <- function(x, chrm=NULL, main=NULL, cx = 0.5, ...)
+dmplot <- function(x, chrm=NULL, mrks=NULL, main=NULL, cx = 0.5, ...)
 {
    ## check inputs
-   i.dmplot.check(x, chrm)
+   i.dmplot.check(x, chrm, mrks)
 
    if (is.null(chrm)) chrm <- 1:attributes(x)$nchrm
 
@@ -1297,30 +1469,40 @@ dmplot <- function(x, chrm=NULL, main=NULL, cx = 0.5, ...)
     {  ## set up graphic window      
        i.open.graphics()
 
-       ## setup plotting regions (i.e. initialize + grid)
-       i.dmplot.setup(x[[ch]],  ch, main)
 
+       if(is.null(mrks)) {
+          ddat <- x[[ch]]
+        } else {
+          ddat <- x[[ch]][,mrks]
+        }
+
+       ## setup plotting regions (i.e. initialize + grid)
+          i.dmplot.setup(ddat,  ch, main)
        ## plot deletions
-       indx <- which(x[[ch]] == 1, arr.ind = TRUE)
+       indx <- which(ddat == 1, arr.ind = TRUE)
        points(indx[, 2], indx[, 1], pch = 19, cex=cx)
 
-       if(any(is.na(x[[ch]])))
+       ## plot marker map
+        axis(1, 1:ncol(x[[ch]]), signif(x$map[[1]], digits=3) , cex.axis = 0.5, las = 3, mgp=c(0,1,0)) ## b&w marker axis
+
+
+       if(any(is.na(ddat)))
        { # if data contains any NA's then plot with no block structure
-           i.dmplot.markeraxis(x[[ch]])  ## B&W marker labels
+           i.dmplot.markeraxis(ddat)  ## B&W marker labels
 
            #  plot missing observations
-           indx <- which(is.na(x[[ch]]), arr.ind = TRUE)
+           indx <- which(is.na(ddat), arr.ind = TRUE)
            points(indx[, 2], indx[, 1], col="blue", pch=19, cex=cx )
        }  else {
-           i.dmplot.markeraxis(x[[ch]])  ## colour marker labels
-           i.dmplot.blocks(x[[ch]])  ## draw blocks
+           i.dmplot.markeraxis(ddat)  ## colour marker labels
+           i.dmplot.blocks(ddat)  ## draw blocks
 
            ## plot imputed values
-           indxNA <- attr(x[[ch]], "imputed")
+           indxNA <- attr(ddat, "imputed")
            if(!any(is.na(indxNA)))
            {
-            indxNA.deletion <- indxNA[x[[ch]][indxNA] == 1,]
-            indxNA.nodeletion <- indxNA[x[[ch]][indxNA] == 0,]
+            indxNA.deletion <- indxNA[ddat[indxNA] == 1,]
+            indxNA.nodeletion <- indxNA[ddat[indxNA] == 0,]
            if(length(indxNA.deletion) > 0)  ## imputed deletion 
                points(indxNA.deletion[,2], indxNA.deletion[,1], col="red", pch=19, cex=cx )
            if(length(indxNA.nodeletion) > 0) ## imputed non-deletion
@@ -1867,8 +2049,6 @@ read.files <- function(datafile, mapfile, na.strings="NA", mrks.as.rows=TRUE,
 
    i.rf.checkinputs(datafile, mapfile,  mrks.as.rows, names.pres )
 
-   ## results structure
-   res <- list()
 
    ##------------------------##
    ##  Read data file        ##
@@ -1914,15 +2094,14 @@ read.files <- function(datafile, mapfile, na.strings="NA", mrks.as.rows=TRUE,
                  1]
        map[[i]] <- sort(map[[i]])
        }
-     res[["map"]] <- map
    } ## end if mising mapfile
 
 
    ##------------------------------------##
    ## Form dmdata object from rt matrix  ##
    ##------------------------------------##
-   res[["x"]] <- vector("list", length(map))
-   for(ch in 1:length(map))
+   res <- list()
+   for(ch in names(map))
    {
      mrks <- names(map[[ch]])
      deldata <- matrix(data=NA, nrow=nrow(rt), ncol= length(mrks))
@@ -1932,16 +2111,11 @@ read.files <- function(datafile, mapfile, na.strings="NA", mrks.as.rows=TRUE,
        cat( mrks[is.na(indx)], "\n")
        stop(" Marker names mismatch in map and data files.")
      }
-     res[["x"]][[ch]] <- as.dmdatachrm(rt[, indx])
+     res[[ch]] <- as.dmdatachrm(as.matrix(rt[, indx]))
+     attr(res[[ch]], "chrmname") <- ch
    }
-   res[["x"]] <- as.dmdata(res[["x"]])
-
-
-
-
-
-
-
+   res[["map"]] <- map
+   res <- as.dmdata(res)
 
    return(res)
 
@@ -1984,8 +2158,6 @@ sim.dmmap <- function (len = rep(100, 20), n.mar = 10,  eq.spacing = FALSE)
 
 
 
-
-#### the end 
 
 
 
