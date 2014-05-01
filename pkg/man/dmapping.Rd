@@ -14,7 +14,7 @@ dmapping(x=NULL, chrm=NULL, niterates=100, nwithin=100, cooling=0.99, psampled=0
 An object of class \code{\link{dmdata}} or \code{\link{dmdatachrm}} that contains the deletion data.
 }
   \item{chrm}{
-an integer vector specifying which chromosomes are to be analyzed.
+an integer vector indexing which chromosomes are to be analyzed.
 }
   \item{niterates}{
 specifies the number of iterations of the simulated annealing algrorithm to perform

@@ -1080,7 +1080,10 @@ subsetdata  <- function(x=NULL, keep.chrm=NULL, drop.mrks=NULL, drop.rows=NULL)
      ## form subsetted structure and adjust map accordingly
      subx <- x[indx]
      attr(subx, "nchrm") <- length(indx)
-     indx <- match(keep.chrm, names(x[["map"]]))
+     indx <- keep.chrm  ## initialize
+     if(is.character(keep.chrm)) indx <- match(keep.chrm, names(x[["map"]]))
+
+
      if(any(is.na(indx)))  stop(" Problem with matching keep.chrm with map element in dmdata object.")
      
      subx[["map"]] <-  x[["map"]][indx]
@@ -1090,18 +1093,17 @@ subsetdata  <- function(x=NULL, keep.chrm=NULL, drop.mrks=NULL, drop.rows=NULL)
 
  ## subsetting on mrks to be removed/dropped
  if(!is.null(drop.mrks))
- {
-   if(is.character(drop.mrks)){
-      indx <- match(drop.mrks, colnames(subx[[1]]))
-       if(any(is.na(indx)))
-            stop(paste(c(" drop.mrks contains the following mismatched marker labels ... ", drop.mrks[is.na(indx)]),collapse=" ") )
-   }  ## end if is.character
+ { 
+   indx <- drop.mrks
+   if(!is.character(drop.mrks)){  ## numeric or integer
+       if(max(drop.mrks) > ncol(subx[[1]]))  
+           stop(paste(c(" drop.mrks is indexing marker columns  that do not exist ... ", max(drop.mrks)),collapse= " "))
+   } else {
+    indx <- match(drop.mrks, colnames(subx[[1]]))
+    if(any(is.na(indx)))
+           stop(paste(c(" drop.mrks contains the following mismatched marker labels ... ", drop.mrks[is.na(indx)]),collapse=" ") )
+   } ## end if else
 
-   if(is.integer(drop.mrks) | is.numeric(drop.mrks)){
-      indx <- match(drop.mrks , 1:ncol(subx[[1]]))
-      if(any(is.na(indx)))  
-             stop(paste(c(" drop.mrks is indexing marker columns  that do not exist ... ", drop.mrks[is.na(indx)]),collapse= " "))
-    }  ## end if is.integer | is.numeric
 
     ## form subsetted structure and adjust map accordingly
     map <- subx[["map"]]
@@ -1116,16 +1118,17 @@ subsetdata  <- function(x=NULL, keep.chrm=NULL, drop.mrks=NULL, drop.rows=NULL)
  ## subsetting on lines/rows/plants to be removed/dropped
  if(!is.null(drop.rows))
  {
-  if(is.character(drop.rows)){
-      indx <- match(drop.rows, rownames(subx[[1]]))
-       if(any(is.na(indx)))  
-           stop(paste(c(" drop.rows contains the following mismatched row labels ... ", drop.rows[is.na(indx)] ), collapse=" "))
-   }  ## end if is.character
 
-   if(is.integer(drop.rows) | is.numeric(drop.rows)){
-      indx <- match(drop.rows , 1:nrow(subx[[1]]))
-      if(any(is.na(indx)))  stop(paste(c(" drop.rows is indexing rows  that do not exist ... ", drop.rows[is.na(indx)]), collapse=" "))
-    }  ## end if is.integer | is.numeric
+  indx <- drop.rows
+   if(!is.character(drop.rows)){  ## numeric or integer
+       if(max(drop.rows) > nrow(subx[[1]]))
+           stop(paste(c(" drop.rows is indexing rows  that do not exist ... ", max(drop.rows)),collapse= " "))
+   } else {
+    indx <- match(drop.rows, rownames(subx[[1]]))
+    if(any(is.na(indx)))
+           stop(paste(c(" drop.rows contains the following mismatched row labels ... ", drop.rows[is.na(indx)]),collapse=" ") )
+   } ## end if else
+
 
    ## form subsetted structure and adjust map accordingly
     chrmname <- attributes(subx[[1]])$chrmname
@@ -1203,6 +1206,9 @@ permutecols <- function(x)
   if (!is.dmdata(x)  )
      stop("Object not of class  dmdata")
 
+  # save map and chrmname
+  map <- x[["map"]]
+  
   # create new structure for results
   res <- vector("list", attributes(x)$nchrm)
   names(res) <- as.character(1:attributes(x)$nchrm)
@@ -1210,15 +1216,17 @@ permutecols <- function(x)
   for(ch in 1:attributes(x)$nchrm)  ## indexed over chromosomes
   {
      cl <- class(x[[ch]])
+     chrmname <- attributes(x[[ch]])$chrmname
      ## permute columns
      indx <- sample(1:ncol(x[[ch]]), ncol(x[[ch]]), replace=F)
      a <- x[[ch]][, indx]
      res[[ch]] <- as.dmdatachrm(a)
+     attr(res[[ch]], "chrmname") <- chrmname
   }
   # turning res into dmdata object
   class(res) <- "dmdata"
   attr(res, "nchrm") <- attributes(x)$nchrm
-
+  res[["map"]] <- map
   return(res)
 }
 
@@ -1445,6 +1453,7 @@ impute <- function(x,  uniform=TRUE)
 
       for(ch in 1:attributes(x)$nchrm)
         res[[ch]] <- i.impute(x[[ch]])
+      res[["map"]] <- x[["map"]]
       res <- as.dmdata(res)
    } ## end else
    return(res)
@@ -1771,20 +1780,37 @@ dmapping <- function(x=NULL, chrm=NULL, niterates=100, nwithin=100,cooling=0.99 
   
   if(is.null(chrm)) chrm <- 1:attributes(x)$nchrm
 
+  if(is.null(x[["map"]])) stop(" Object must have map. Map not present...")
+  map <- x[["map"]]
+
+
   for(ch in chrm)
   {
      res <- dmappingchrm(x[[ch]], niterates, nwithin, cooling, psampled, method, 
                             refblockstr, refmrkord, ...)
-     final[["bestx"]][[ch]] <- res[["bestx"]]
-     final[["bestt"]][[ch]] <- res[["bestt"]]
-     final[["besttvec"]][[ch]] <- res[["besttvec"]]
+     final[["bestx"]][[ which(ch==chrm) ]] <- res[["bestx"]]
+     final[["bestt"]][[ which(ch==chrm) ]] <- res[["bestt"]]
+     final[["besttvec"]][[  which(ch==chrm) ]] <- res[["besttvec"]]
+     names(final[["bestx"]])[which(ch==chrm)] <-
+     names(final[["bestt"]])[which(ch==chrm)] <- 
+     names(final[["besttvec"]])[ which(ch==chrm)] <- attributes(x[[ch]])$chrmname 
+
+     ## rearrange the marker loci for chromosome ch to be in the same order as final[["bestx"]][[ch]]
+     map <- x[["map"]]
+     indx <- match(colnames(final[["bestx"]][[which(ch==chrm)]][,]) ,  names(x[["map"]][[ch]]))
+     map[[ch]] <- map[[ch]][indx]  ## reordering chromosome ch
+
+
      if(!is.null(refblockstr) & !is.null(refmrkord))
       {
            final[["bestdist"]] <- vector("list", attributes(x)$nchrm)
-           final[["bestdist"]][[ch]] <- res[["bestdist"]] 
+           final[["bestdist"]][[  attributes(x[[ch]])$chrmname ]] <- res[["bestdist"]] 
       }
 
   }  ## end for ch
+  ## add the map
+
+  final[["bestx"]][["map"]] <- map
   final[["bestx"]] <- as.dmdata(final[["bestx"]])
 
 

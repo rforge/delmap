@@ -60,9 +60,16 @@ Slist <-  sim.dmdata( numlines = 50, plines = 0.2, map = map,
 # class of object that does not contain any missing data
 class(Slist[["nomissing"]])
 
-## Clean data i.e. remove rows/columns without deletion data
-Slist[["nomissing"]] <- cleandata(Slist[["nomissing"]])
+
+# let's look at the first chromosome's deletion data where there isn't 
+# any missing data
+sd <- subsetdata(Slist[["nomissing"]], keep.chrm=1)
+sdclean <- cleandata(sd)  # cleaning data 
+dmplot(sdclean)
 
 # print the block structure for each chromosome
-idmarkerblocks(Slist[["nomissing"]])
+idmarkerblocks(sdclean)
 }
+
+
+
