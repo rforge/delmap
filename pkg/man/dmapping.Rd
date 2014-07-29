@@ -7,7 +7,7 @@
 }
 \usage{
 dmapping(x=NULL, chrm=NULL, niterates=100, nwithin=100, cooling=0.99, psampled=0.1, method="concorde",
-                refblockstr=NULL, refmrkord=NULL, ...)
+                refblockstr=NULL, refmrkord=NULL, dmethod="manhattan", ...)
 }
 \arguments{
   \item{x}{
@@ -36,6 +36,12 @@ annealing algorithm.
  \item{refblockstr}{integer vector with true block assignments if known.
 }
  \item{refmrkord}{list of length the number of blocks. Each element is an integer vector giving the order of the markers within the block.}  
+   \item{dmethod}{
+the distance measure to be used. This must be one of
+          `"euclidean"', `"maximum"', `"manhattan"', `"canberra"',
+          `"binary"' or `"minkowski"'.  Any unambiguous substring can
+          be given.
+}
  \item{...}{other parameters that are to be passed to the TSP solving function \code{solve_TSP}.
 }
 }

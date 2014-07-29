@@ -10,13 +10,19 @@ for a given chromosome. It is assumed the
 deletion data does not contain any missing genotypes. 
 }
 \usage{
-CreateDistMatrix(x = NULL)
+CreateDistMatrix(x = NULL, dmethod="manhattan")
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
   \item{x}{
 a \code{\link{dmdatachrm}} object or matrix that 
 contains only 0's and 1's for a single chromosome.
+}
+   \item{dmethod}{
+the distance measure to be used. This must be one of
+          "euclidean", "maximum", "manhattan", "canberra",
+          "binary" or "minkowski".  Any unambiguous substring can
+          be given.
 }
 }
 \details{

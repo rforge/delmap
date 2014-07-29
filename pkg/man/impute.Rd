@@ -8,17 +8,13 @@ Impute Missing Marker Genotypes
 This function imputes any missing marker genotypes.  
 }
 \usage{
-impute(x, uniform=TRUE)
+impute(x )
 }
 \arguments{
   \item{x}{
 An object of class \code{\link{dmdata}} or \code{\link{dmdatachrm}} which contains 
 the genotype data in 0/1 form and any 
 missing marker genotypes.
-}
-    \item{uniform}{
-A logical variable that when true, specifies that the imputation of any missing marker genotypes 
-will be uniform, otherwise, see below.
 }
 }
 \details{
@@ -58,7 +54,7 @@ class(Slist[["missing"]])
 impute(Slist[["missing"]])
 
 # impute missing genotypes conditional on flanking genotypes. 
-impute(Slist[["missing"]], uniform=FALSE)
+impute(Slist[["missing"]] )
 
 }
 

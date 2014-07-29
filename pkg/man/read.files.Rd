@@ -7,7 +7,8 @@ Read Deletion Data and Map File (if available)
 Reads in deletion data and map file. 
 }
 \usage{
-read.files(datafile, mapfile,   na.strings="NA", mrks.as.rows=TRUE, row.names=1, names.pres=TRUE, sep="", ...)
+read.files(datafile, mapfile,   na.strings="NA", mrks.as.rows=TRUE, row.names=1, names.pres=TRUE, 
+         genotypes=TRUE, sep="", ...)
 
 }
 \arguments{
@@ -22,13 +23,6 @@ read.files(datafile, mapfile,   na.strings="NA", mrks.as.rows=TRUE, row.names=1,
           relative to the current working directory, \code{getwd()}. If no 
           \code{mapfile} is specified, then all the marker loci are assumed
           to belong to the same chromosome.
-}
-  \item{sep}{
-the field separator character.  Values on each line of the
-          files are separated by this character.  If \code{sep = ""} (the
-          default for \code{read.files}) the separator is \code{white space},
-          that is one or more spaces, tabs, newlines or carriage
-          returns. Both files are assumed to have the same field separator.
 }
   \item{na.strings}{
 a character vector of strings which are to be interpreted
@@ -45,6 +39,16 @@ an integer value giving the column number of the marker or plant names in the da
 a logical value indicating if the data file contains the marker and plant names. If \code{FALSE}, 
 \code{row.names} is ignored. 
 }
+  \item{genotypes}{
+a logical value when true, indicates that the \code{datafile} contains marker genotypes (i.e., presence and absence). When false, the \code{datafile} contains the probability of a deletion.  
+}
+  \item{sep}{
+ the field separator character.  Values on each line of the
+          file are separated by this character.  If \code{sep = ""} (the
+          default for \code{read.files}) the separator is \code{white space},
+          that is one or more spaces, tabs, newlines or carriage
+          returns. Both files are assumed to have the same separator. 
+}
   \item{...}{
 other allowable \code{link{read.table}} options.
 }
@@ -54,18 +58,23 @@ other allowable \code{link{read.table}} options.
 
 When reading in the deletion data, 
 \code{read.files} default behaviour is 
-to read in a matrix of values where the rows are the markers and the columns are the plants, the 
+to read in a matrix of genotype values where the rows of the matrix are the markers and the columns are the plants, the 
 marker and plant names are present, the first column contains the marker labels, it is a space 
 seperated file, and missing genotypes are denoted by \code{NA}. 
 
-This default behaviour can be changed via the about function arguments. 
+However, this default behaviour can be changed via the different function arguments.
+
 For example, suppose the data 
 were organized by rows as plants and columns as markers. Also, suppose the file is comma 
 seperated and missing genotypes are denoted by 99. Then the command would be 
 \code{read.files(file, mrks.as.rows=FALSE, sep=",", na.strings = "99")}.
 
-The data can be integer or character. The integer/character value with the lowest frequency is 
+If \code{read.files} contains marker genotypes, then 
+the data can be integer or character. The integer/character value with the lowest frequency is 
 assumed to denote a deletion. The values are converted into 0/1 data where 1 denotes a deletion.
+
+If \code{genotypes=FALSE}, then \code{datafile} is a matrix of deletion probabilities. Here, \code{NA} values are not allowed.  
+
  
 If \code{names.pres=FALSE}, generic plant names L1, L2, \ldots and
 marker names M1, M2, \ldots will be assigned to the rows and columns.  
@@ -113,7 +122,7 @@ mapfn <- paste(package.path, "/map.txt", sep="")
 
 res <- read.files(datafile=datafn, mapfile = mapfn, mrks.as.rows=FALSE)
 
-res[["x"]]
+res[[1]]
 
 
 }

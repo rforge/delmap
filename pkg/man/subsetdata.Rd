@@ -7,7 +7,7 @@ Subset Deletion Data
 Returns a dmdata object subsetted on chromosomes, marker loci, and/or rows.
 }
 \usage{
-subsetdata(x=NULL, keep.chrm=NULL, drop.mrks=NULL, drop.rows=NULL)
+subsetdata(x=NULL, keep.chrm=NULL, drop.mrks=NULL, drop.rows=NULL, keep.mrks=NULL, keep.rows=NULL)
 }
 \arguments{
   \item{x}{
@@ -22,6 +22,16 @@ numeric, integer, or character values that reference the marker loci to be remov
  \item{drop.rows}{
 numeric, integer, or character values that reference the rows to be removed.
 }
+
+ \item{keep.mrks}{
+numeric, integer, or character values that reference the marker loci to be kept.
+}
+ \item{keep.rows}{
+numeric, integer, or character values that reference the rows to be kept.
+}
+
+
+
 }
 \details{
 The function is used to form a subset of an object of class \code{\link{dmdata}}.
@@ -58,8 +68,10 @@ Ssub
 
 
 # now remove some marker loci and some rows of data and adjust the map
-Ssub <- subsetdata(Ssub, keep.chrm=1, drop.mrks=1:10, drop.rows=c(2,6,29))
-Ssub
+subsetdata(Ssub, keep.chrm=1, drop.mrks=1:10, drop.rows=c(2,6,29))
+
+# keep the first 10 marker loci and rows 
+subsetdata(Ssub, keep.chrm=1, keep.mrks=1:10, keep.rows=1:10)
 
 
 }
